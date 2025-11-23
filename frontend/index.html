@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home · AI Experiment Tracking & Log Collection Platform</title>
+    <style>
+        :root {
+          --bg: #f6f7fb;
+          --panel: #ffffff;
+          --ink: #1f2430;
+          --muted: #6b7280;
+          --brand: #0f2b5b;
+          --brand-weak: #183a78;
+          --ring: #dbe3ff;
+          --radius: 16px;
+          --shadow: 0 10px 18px rgba(18, 28, 45, 0.08);
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+          margin: 0;
+          font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Ubuntu, Cantarell, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+          color: var(--ink);
+          background: var(--bg);
+        }
+        .app-header {
+          position: sticky; top: 0; z-index: 10;
+          width: 100%;
+          background: linear-gradient(180deg, var(--brand), var(--brand-weak));
+          color: #fff;
+          padding: 14px 22px;
+          box-shadow: var(--shadow);
+        }
+        .app-header__title { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .2px; text-align: center; }
+        .layout { display: grid; grid-template-columns: 240px 1fr; gap: 18px; padding: 18px; max-width: 1280px; margin: 0 auto; }
+        @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .sidebar { order: 2; } }
+        .sidebar { background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 16px; height: fit-content; }
+        .sidebar h2 { font-size: 14px; color: var(--muted); margin: 6px 0 12px; letter-spacing: .6px; }
+        .nav { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+        .nav a { display: block; padding: 10px 12px; border-radius: 12px; text-decoration: none; color: var(--ink); }
+        .nav a:hover { background: #f0f4ff; }
+        .nav a.is-active { background: #e6edff; font-weight: 700; }
+        .nav ul { list-style:none; margin:4px 0 0 16px; padding:0; border-left:1px solid #e0e4f2; }
+        .nav ul li a { font-size:13px; color:#444; }
+        .main { display: grid; gap: 16px; }
+        .card { background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; border: 1px solid #eef1f7; }
+        .card h3 { margin: 0 0 10px; font-size: 16px; }
+        .card .hint { color: var(--muted); font-size: 12px; }
+        .row { display: grid; gap: 10px; align-items: center; grid-template-columns: 120px 1fr 140px; }
+        @media (max-width: 640px) { .row { grid-template-columns: 1fr; } .row label { display: none; } }
+        select, input[type="text"], button { padding: 10px 12px; border: 1px solid #dee3ef; border-radius: 12px; outline: none; font: inherit; background: #fff; }
+        select:focus, input[type="text"]:focus { box-shadow: 0 0 0 4px var(--ring); border-color: #c9d6ff; }
+        .btn { background: #111827; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+        .btn:disabled { opacity: .6; cursor: not-allowed; }
+        .btn-secondary { background:#fff; color:#111827; border:1px solid #d1d5db; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 10px 12px; border-bottom: 1px solid #f0f2f7; text-align: left; vertical-align: top; }
+        .table th { font-size: 12px; color: var(--muted); font-weight: 700; }
+        .empty { padding: 18px; color: var(--muted); text-align: center; }
+        .section-title { margin: 0 0 6px; font-weight: 800; font-size: 14px; letter-spacing: .3px; color: #0f172a; }
+        .section-sub { margin: 0 0 10px; color: var(--muted); font-size: 12px; }
+
+        .tabs { display: flex; gap: 8px; border-bottom:1px solid #eef1f7; margin-bottom:10px; }
+        .tab { background:#fff; border:1px solid #eef1f7; border-bottom:none; padding:8px 12px; border-radius:12px 12px 0 0; cursor:pointer; font-weight:600; }
+        .tab.is-active { background:#e6edff; }
+        .tab-panels .panel { display:none; }
+        .tab-panels .panel.is-active { display:block; }
+
+        .json-cell {
+          background:#f9fafb;
+          border-radius:8px;
+          padding:6px 8px;
+          font-size:11px;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+          max-height:140px;
+          overflow:auto;
+          white-space:pre;
+        }
+        .linklike { color:#183a78; text-decoration:underline; cursor:pointer; }
+
+        #recoCard .table th,
+        #recoCard .table td {
+          font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+<header class="app-header">
+    <h1 class="app-header__title">Home · AI Experiment Tracking &amp; Log Collection Platform</h1>
+</header>
+
+<main class="layout">
+    <aside class="sidebar">
+        <h2>MENU</h2>
+        <nav>
+            <ul class="nav">
+                <li><a href="/index" class="is-active">Home</a></li>
+                <li>
+                    <a href="/projects">Projects</a>
+                    <ul>
+                        <li><a href="/experiments">Experiments</a></li>
+                        <li><a href="/runs">Runs</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main content -->
+    <section class="main">
+        <!-- Project selector (조회만) + Projects 이동 버튼 -->
+        <div class="card">
+            <div class="row">
+                <label for="projectSelect">project</label>
+                <select id="projectSelect" aria-label="프로젝트 선택"></select>
+                <button id="primaryBtn" class="btn">프로젝트 생성</button>
+            </div>
+            <p class="hint" id="statusText">프로젝트를 불러오는 중… (생성/수정/삭제는 Projects 페이지에서)</p>
+        </div>
+
+        <!-- Experiments list table (placeholder) -->
+        <div class="card">
+            <h3 class="section-title">[실험 목록 테이블]</h3>
+            <div class="table-wrap">
+                <table class="table" id="expTable" aria-label="실험 목록">
+                    <thead>
+                    <tr>
+                        <th>Experiment Name</th>
+                        <th>Created At</th>
+                        <th>Tags</th>
+                    </tr>
+                    </thead>
+                    <tbody id="expTableBody">
+                    <tr><td colspan="3" class="empty">선택된 프로젝트의 실험을 표시합니다. (아직 API 연결 전)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Experiment detail tabs (placeholder) -->
+        <div class="card" id="expDetailCard">
+            <h3 class="section-title">[실험 상세 탭]</h3>
+            <p class="section-sub">Run 목록 · Metrics · Artifacts · Dataset · Env Snapshot</p>
+
+            <!-- 탭 헤더 -->
+            <div class="tabs" role="tablist" aria-label="Experiment details">
+                <button class="tab is-active" data-tab="runs"    role="tab" aria-selected="true">Runs</button>
+                <!--<button class="tab"          data-tab="metrics" role="tab">Metrics</button>-->
+                <button class="tab"          data-tab="artifacts" role="tab">Artifacts</button>
+                <button class="tab"          data-tab="dataset" role="tab">Dataset</button>
+                <button class="tab"          data-tab="env"     role="tab">Env Snapshot</button>
+            </div>
+
+            <!-- 탭 컨텐츠 -->
+            <div class="tab-panels">
+                <!-- Runs -->
+                <section class="panel is-active" data-panel="runs" aria-label="Runs">
+                    <div class="row" style="grid-template-columns: 1fr 140px;">
+                        <div class="hint" id="runsHint">실험을 선택하면 해당 Run들이 표시됩니다.</div>
+                        <button class="btn" id="refreshRunsBtn">새로고침</button>
+                    </div>
+                    <div class="table-wrap" style="margin-top:10px;">
+                        <table class="table" id="runsTable">
+                            <thead>
+                            <tr>
+                                <th>Run</th>
+                                <th>Status</th>
+                                <!--<th>Seed</th> -->
+                                <!--<th>Best Acc</th> -->
+                                <!--<th>Created</th> -->
+                            </tr>
+                            </thead>
+                            <tbody id="runsTbody">
+                            <tr><td colspan="2" class="empty">Run이 없습니다.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Artifacts -->
+                <section class="panel" data-panel="artifacts" aria-label="Artifacts">
+                    <div class="row" style="grid-template-columns: 220px 1fr 120px;">
+                        <label for="runSelect2">run</label>
+                        <select id="runSelect2" aria-label="Run 선택 (Artifacts)"></select>
+                        <button class="btn" id="loadArtifactsBtn">로드</button>
+                    </div>
+                    <div class="table-wrap" style="margin-top:10px;">
+                        <table class="table" id="artifactsTable">
+                            <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody id="artifactsTbody">
+                            <tr><td colspan="4" class="empty">Artifact가 없습니다.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Dataset -->
+                <section class="panel" data-panel="dataset" aria-label="Dataset">
+                    <div id="datasetBox" class="empty">이 실험/런에 연결된 데이터셋 정보가 없습니다.</div>
+                </section>
+
+                <!-- Env Snapshot -->
+                <section class="panel" data-panel="env" aria-label="Env Snapshot">
+                    <pre id="envPre" style="background:#0f172a; color:#e5e7eb; padding:12px; border-radius:12px; overflow:auto; max-height:320px; font-size:12px;">(비어 있음)</pre>
+                </section>
+            </div>
+        </div>
+
+        <!-- ✅ AI Recommendation / Prediction (완성 버전) -->
+        <div class="card" id="recoCard">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <div>
+                    <h3 class="section-title" style="margin-bottom:2px;">AI Recommendations</h3>
+                    <p class="section-sub" style="margin-bottom:0;">
+                        선택한 실험의 Run 메트릭을 기반으로 Python(XGBoost) AI 서비스가 생성한 추천입니다.
+                    </p>
+                </div>
+                <div style="text-align:right;">
+                    <button id="recoRefreshBtn" class="btn btn-secondary" style="margin-bottom:4px;">Refresh Suggestions</button>
+                    <div class="hint" id="recoHint">실험을 선택한 뒤 새로고침을 눌러주세요.</div>
+                </div>
+            </div>
+
+            <div class="table-wrap" style="margin-top:10px;">
+                <table class="table" aria-label="AI recommendations">
+                    <thead>
+                    <tr>
+                        <th>Created At</th>
+                        <th>Type</th>
+                        <th>Score</th>
+                        <th>Params</th>
+                        <th>Explanations</th>
+                    </tr>
+                    </thead>
+                    <tbody id="recoTbody">
+                    <tr><td colspan="5" class="empty">추천 데이터가 없습니다.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    // ===== Basic API config =====
+    const API_BASE = localStorage.getItem("apiBase") || "http://localhost:8080/api";
+    function authHeader(){ const b = localStorage.getItem('basicAuth'); return b ? { 'Authorization': 'Basic '+b } : {}; }
+
+    // ===== API helpers =====
+    async function listProjects({ page = 0, size = 50 } = {}) {
+      const res = await fetch(`${API_BASE}/projects?page=${page}&size=${size}`, {
+        headers: { ...authHeader() }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      return json?.data?.content ?? [];
+    }
+
+    // ===== UI wiring =====
+    const $select  = document.getElementById('projectSelect');
+    const $status  = document.getElementById('statusText');
+    const $primary = document.getElementById('primaryBtn');
+
+    function setStatus(text, ok = true) {
+      $status.textContent = text;
+      $status.style.color = ok ? 'var(--muted)' : '#b91c1c';
+    }
+
+    // 선택 상태에 따라 버튼 라벨/동작 결정
+    function updatePrimaryButton() {
+      const id = ($select.value || '').trim();
+      if (!id) {
+        $primary.textContent = '프로젝트 생성';
+        $primary.onclick = () => { location.href = '/projects'; };
+      } else {
+        $primary.textContent = '프로젝트 열기';
+        $primary.onclick = () => { location.href = `/projects/detail?id=${encodeURIComponent(id)}`; };
+      }
+    }
+
+    function fillProjectSelect(items) {
+      $select.innerHTML = '';
+      if (!items.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '프로젝트가 없습니다';
+        $select.appendChild(opt);
+      } else {
+        const ph = document.createElement('option');
+        ph.value = '';
+        ph.textContent = '프로젝트를 선택하세요';
+        $select.appendChild(ph);
+        for (const p of items) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.projectName || p.name || p.id;
+          $select.appendChild(opt);
+        }
+      }
+      updatePrimaryButton();
+    }
+
+    $select.addEventListener('change', updatePrimaryButton);
+
+    async function boot() {
+      setStatus('프로젝트를 불러오는 중…');
+      try {
+        const items = await listProjects();
+        fillProjectSelect(items);
+        setStatus(`총 ${items.length}개 프로젝트`);
+        document.getElementById('expTableBody').innerHTML='<tr><td colspan="3" class="empty">프로젝트를 선택하세요.</td></tr>';
+      } catch (err) {
+        console.error(err);
+        fillProjectSelect([]);
+        setStatus('프로젝트 목록을 불러오지 못했어요. API 주소/인증을 확인해주세요.', false);
+      }
+    }
+
+    async function listExperiments(projectId, page=0, size=10){
+      const res = await fetch(`${API_BASE}/experiments?projectId=${encodeURIComponent(projectId)}&page=${page}&size=${size}&sort=createdAt,DESC`, {
+        headers: { ...authHeader() }
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const json = await res.json();
+      return json?.data?.content ?? [];
+    }
+
+    function renderExperiments(items){
+      const $tbody = document.getElementById('expTableBody');
+      if(!items.length){ $tbody.innerHTML = '<tr><td colspan="3" class="empty">실험이 없습니다.</td></tr>'; return; }
+      $tbody.innerHTML = items.map(x=>{
+        const created = x.createdAt ? new Date(x.createdAt).toLocaleString() : '-';
+        const tags = Array.isArray(x.tags) ? x.tags.join(', ') : (x.tags||'');
+        const name = (x.experimentName || x.id);
+        return `<tr><td><strong>${name}</strong></td><td>${created}</td><td>${tags}</td></tr>`;
+      }).join('');
+    }
+
+    $select.addEventListener('change', async ()=>{
+      updatePrimaryButton();
+      const id = ($select.value||'').trim();
+      if(!id){ document.getElementById('expTableBody').innerHTML='<tr><td colspan="3" class="empty">프로젝트를 선택하세요.</td></tr>'; return; }
+      try{ const exps = await listExperiments(id); renderExperiments(exps); }
+      catch(e){ document.getElementById('expTableBody').innerHTML='<tr><td colspan="3" class="empty">실험 불러오기 실패.</td></tr>'; }
+    });
+
+    document.addEventListener('DOMContentLoaded', boot);
+
+    function unwrap(obj){
+      return (obj && typeof obj==='object' && 'data' in obj && ('success' in obj || 'error' in obj)) ? obj.data : obj;
+    }
+    function asList(obj){
+      const x = unwrap(obj);
+      if (Array.isArray(x)) return x;
+      if (x && typeof x==='object'){
+        for(const k of ['content','items','results','list','records','projects','experiments','recommendations']) {
+          if (Array.isArray(x[k])) return x[k];
+        }
+      }
+      return [];
+    }
+    function qs(sel){ return document.querySelector(sel); }
+    function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
+    function setHint(el, text, ok=true){ el.textContent=text; el.style.color = ok ? 'var(--muted)':'#b91c1c'; }
+    function headers(){ return { ...authHeader(), 'Accept':'application/json' }; }
+
+    /* ==== 탭 전환 ==== */
+    (function wireTabs(){
+      const tabs = qsa('#expDetailCard .tab');
+      tabs.forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          tabs.forEach(t=>t.classList.remove('is-active'));
+          qsa('#expDetailCard .panel').forEach(p=>p.classList.remove('is-active'));
+          btn.classList.add('is-active');
+          const name = btn.dataset.tab;
+          qs(`#expDetailCard .panel[data-panel="${name}"]`).classList.add('is-active');
+        });
+      });
+    })();
+
+    /* ==== 상태 ==== */
+    let currentProjectId = null;
+    let currentExperimentId = null;
+    let runsCache = [];  // [{id, runName, status, seed, bestAcc, createdAt, ...}]
+
+    /* ==== 기존 실험 테이블 행 클릭시 → 상세 로드 ==== */
+    (function hookExpRowClick(){
+      const origRenderExperiments = renderExperiments;
+      renderExperiments = function(items){
+        const $tbody = document.getElementById('expTableBody');
+        if(!items.length){ $tbody.innerHTML = '<tr><td colspan="3" class="empty">실험이 없습니다.</td></tr>'; return; }
+        $tbody.innerHTML = items.map(x=>{
+          const created = x.createdAt ? new Date(x.createdAt).toLocaleString() : '-';
+          const tags = Array.isArray(x.tags) ? x.tags.join(', ') : (x.tags||'');
+          const name = (x.experimentName || x.id);
+          return `<tr data-exp-id="${x.id}">
+                    <td><button class="linklike" data-exp-id="${x.id}" title="상세 보기" style="border:none;background:none;background-color:transparent;font-weight:700;">${name}</button></td>
+                    <td>${created}</td>
+                    <td>${tags}</td>
+                  </tr>`;
+        }).join('');
+
+        // 클릭 이벤트
+        $tbody.querySelectorAll('button[data-exp-id]').forEach(btn=>{
+          btn.addEventListener('click', async (e)=>{
+            const expId = e.currentTarget.dataset.expId;
+            currentExperimentId = expId;
+            // Runs / Recommendations 같이 로드
+            await loadRuns(expId);
+            await loadRecommendations();
+            // Runs 탭으로 전환
+            qs('#expDetailCard .tab[data-tab="runs"]').click();
+          });
+        });
+      }
+    })();
+
+    /* ==== 데이터 로더 ==== */
+    async function fetchJSON(url){
+      const res = await fetch(url, { headers: headers() });
+      if(!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return res.json();
+    }
+    async function getRuns(experimentId){
+      const url = `${API_BASE}/runs?experimentId=${encodeURIComponent(experimentId)}&size=1000`;
+      const js = await fetchJSON(url);
+      return asList(js);
+    }
+    async function getArtifacts(runId){
+      const js = await fetchJSON(`${API_BASE}/runs/${encodeURIComponent(runId)}/artifacts`);
+      return asList(js);
+    }
+    async function getEnv(runId){
+      try {
+        return unwrap(await fetchJSON(`${API_BASE}/runs/${encodeURIComponent(runId)}/env`));
+      } catch(e){
+        try { return unwrap(await fetchJSON(`${API_BASE}/runs/${encodeURIComponent(runId)}/snapshot`)); }
+        catch(_){ return null; }
+      }
+    }
+
+    /* ==== Runs 렌더 ==== */
+    function findSeed(meta){
+      if(!meta || typeof meta!=='object') return null;
+      for(const k of ['seed','Seed','random_seed','randomSeed']) if(k in meta) return meta[k];
+      return null;
+    }
+    function bestAccFromMetrics(rows){
+      const keys = ['val.acc','val/acc','accuracy','val_accuracy','val.acc@1'];
+      let best = null;
+      for(const k of keys){
+        const vals = rows.filter(r=> (r.key===k)).map(r=> Number(r.value));
+        if(!vals.length) continue;
+        const m = Math.max(...vals);
+        best = (best==null) ? m : Math.max(best, m);
+      }
+      return best;
+    }
+    async function loadRuns(expId){
+      setHint(qs('#runsHint'), 'Run 목록을 불러오는 중…');
+      try{
+        const raw = await getRuns(expId);
+        runsCache = raw.map(r=>{
+          const id = r.id || r.runId || r.uuid || r.pk || '';
+          const name = r.runName || r.name || id;
+          const status = r.status || r.state || '-';
+          const created = r.createdAt || r.created_at || r.created || null;
+          const seed = findSeed(r.meta || r.metadata || r.params || r.hparams);
+          return { id, name, status, created, seed, raw:r, bestAcc:null };
+        });
+
+        const $tb = qs('#runsTbody');
+        if(!runsCache.length){
+          $tb.innerHTML = '<tr><td colspan="2" class="empty">Run이 없습니다.</td></tr>';
+          setHint(qs('#runsHint'), 'Run이 없습니다.');
+          return;
+        }
+        $tb.innerHTML = runsCache.map(x=>{
+          const created = x.created ? new Date(x.created).toLocaleString() : '-';
+          const best = (x.bestAcc==null) ? '-' : x.bestAcc.toFixed(4);
+          return `<tr data-run-id="${x.id}">
+                    <td><button class="linklike" data-run-id="${x.id}" style="border:none;background:none;background-color:transparent;font-weight:700;">${x.name}</button></td>
+                    <td>${x.status}</td>
+                  </tr>`;
+        }).join('');
+
+        setHint(qs('#runsHint'), `총 ${runsCache.length}개 Run`);
+
+        const $runSelect2 = qs('#runSelect2');
+        if ($runSelect2) {
+          const opts = runsCache.map(x=> `<option value="${x.id}">${x.name}</option>`).join('');
+          $runSelect2.innerHTML = `<option value="">Run 선택</option>${opts}`;
+        }
+
+        // 행 클릭 시 개별 run 페이지로 이동
+        $tb.querySelectorAll('button[data-run-id]').forEach(btn=>{
+          btn.addEventListener('click', (e)=>{
+            const rid = e.currentTarget.dataset.runId;
+            location.href = `http://localhost:8080/runs?id=${encodeURIComponent(rid)}`;
+          });
+        });
+      }catch(err){
+        console.error(err);
+        runsCache = [];
+        qs('#runsTbody').innerHTML = '<tr><td colspan="2" class="empty">Run을 불러오지 못했습니다.</td></tr>';
+        setHint(qs('#runsHint'), 'Run을 불러오지 못했습니다.', false);
+      }
+    }
+    qs('#refreshRunsBtn').addEventListener('click', ()=>{
+      if(currentExperimentId) loadRuns(currentExperimentId);
+    });
+
+    /* ==== Artifacts ==== */
+    function artifactDownloadUrl(runId, a){
+      const id = a.id || a.artifactId || a.uuid;
+      if(!id) return null;
+      return `${API_BASE}/artifacts/${encodeURIComponent(id)}/download`;
+    }
+    async function loadArtifactsFor(runId){
+      const list = await getArtifacts(runId);
+      const $tb = qs('#artifactsTbody');
+      if(!list.length){ $tb.innerHTML = '<tr><td colspan="4" class="empty">Artifact가 없습니다.</td></tr>'; return; }
+      $tb.innerHTML = list.map(a=>{
+        const name = a.fileName || a.name || a.path || (a.id || '');
+        const typ  = a.type || a.kind || '-';
+        const size = (a.size!=null) ? (a.size+' B') : '-';
+        const url  = artifactDownloadUrl(runId, a) || `${API_BASE}/runs/${encodeURIComponent(runId)}/artifacts/${encodeURIComponent(a.id)}/download`;
+        return `<tr>
+          <td>${name}</td><td>${typ}</td><td>${size}</td>
+          <td><a class="btn" href="${url}" target="_blank" rel="noopener">다운로드</a></td>
+        </tr>`;
+      }).join('');
+    }
+    qs('#loadArtifactsBtn').addEventListener('click', async ()=>{
+      const rid = qs('#runSelect2').value;
+      if(!rid){ alert('Run을 선택하세요'); return; }
+      try{ await loadArtifactsFor(rid); }
+      catch(e){ console.error(e); qs('#artifactsTbody').innerHTML='<tr><td colspan="4" class="empty">Artifact 로드 실패</td></tr>'; }
+    });
+
+    /* ==== Dataset & Env ==== */
+    async function loadDataset(){
+      const box = qs('#datasetBox');
+      if(!currentExperimentId){
+        box.textContent = '실험을 먼저 선택하세요.';
+        return;
+      }
+      try{
+        const js = await fetchJSON(`${API_BASE}/experiments/${encodeURIComponent(currentExperimentId)}/datasets`);
+        const list = asList(js);
+        if(!list.length){
+          box.textContent = '데이터셋 정보가 없습니다.';
+          return;
+        }
+        box.innerHTML = list.map(d=>`
+          <div style="margin-bottom:8px;">
+            <div><b>Name:</b> ${d.name ?? '-'}</div>
+            <div><b>Version:</b> ${d.version ?? '-'}</div>
+            <div><b>URI:</b> ${d.uri ?? '-'}</div>
+          </div>
+        `).join('');
+      }catch(e){ console.error(e); box.textContent = '로드 실패'; }
+    }
+    async function loadEnv(){
+      const pre = qs('#envPre');
+      const rid = runsCache[0]?.id;
+      if(!rid){ pre.textContent = '(Run을 선택하거나, 실험에 Run이 있어야 합니다)'; return; }
+      try{
+        const env = await getEnv(rid);
+        pre.textContent = env ? JSON.stringify(env, null, 2) : '(비어 있음)';
+      }catch(e){ console.error(e); pre.textContent = '(로드 실패)'; }
+    }
+    qs('#expDetailCard .tab[data-tab="dataset"]').addEventListener('click', loadDataset);
+    qs('#expDetailCard .tab[data-tab="env"]').addEventListener('click', loadEnv);
+
+    /* ==== AI Recommendations ==== */
+    function pickField(obj, keys, fallback = null) {
+      if (!obj) return fallback;
+      for (const k of keys) {
+        if (obj[k] !== undefined && obj[k] !== null) return obj[k];
+      }
+      return fallback;
+    }
+
+    function prettyJson(obj){
+      if(!obj) return '-';
+      try { return JSON.stringify(obj, null, 2); } catch(e){ return String(obj); }
+    }
+
+    function prettyParams(p) {
+      if (!p) return '-';
+
+      // 1) grid 기반 추천 (HYPERPARAM_SUGGESTION)
+      if (p.grid) {
+        let html = '';
+        for (const k of Object.keys(p.grid)) {
+          const arr = p.grid[k];
+          html += `<div><b>${k}</b>: ${Array.isArray(arr) ? arr.join(', ') : arr}</div>`;
+        }
+        return html;
+      }
+
+      // 2) RUN_SELECTION / EARLY_STOP_HINT 같이 그냥 key-value로 오는 경우
+      let html = '';
+      for (const k of Object.keys(p)) {
+        html += `<div><b>${k}</b>: ${p[k]}</div>`;
+      }
+      return html;
+    }
+
+    function prettyExplanations(ex) {
+      if (!ex) return '-';
+
+      if (Array.isArray(ex)) {
+        return ex.map((item, i) => `
+          <div style="margin-bottom:4px;">
+            <div><b>#${i + 1}</b></div>
+            ${prettyExplanations(item)}
+          </div>
+        `).join('');
+      }
+
+      if (typeof ex === 'string') {
+        return ex;
+      }
+
+      const parts = [];
+
+      if (ex.basis) {
+        parts.push(`<div><b>기준</b>: ${ex.basis}</div>`);
+      }
+      if (ex.y_last !== undefined) {
+        const v = Number(ex.y_last);
+        parts.push(`<div><b>마지막 값</b>: ${Number.isNaN(v) ? ex.y_last : v.toFixed(4)}</div>`);
+      }
+      if (ex.y_pred !== undefined) {
+        const v = Number(ex.y_pred);
+        parts.push(`<div><b>예측 값</b>: ${Number.isNaN(v) ? ex.y_pred : v.toFixed(4)}</div>`);
+      }
+
+      for (const [k, v] of Object.entries(ex)) {
+        if (['basis', 'y_last', 'y_pred'].includes(k)) continue;
+        parts.push(`<div><b>${k}</b>: ${v}</div>`);
+      }
+
+      if (!parts.length) {
+        return prettyJson(ex);
+      }
+
+      return parts.join('');
+    }
+
+
+    function renderRecommendations(rows){
+      const $tb = qs('#recoTbody');
+      if(!rows || !rows.length){
+        $tb.innerHTML = '<tr><td colspan="5" class="empty">추천 데이터가 없습니다.</td></tr>';
+        return;
+      }
+
+      // 디버깅용: 한 번만 찍어봄
+      console.log('recommendations rows sample:', rows[0]);
+
+      $tb.innerHTML = rows.map(r=>{
+        const created = pickField(r, ['createdAt', 'created_at', 'created'], null);
+        const createdText = created ? new Date(created).toLocaleString() : '-';
+
+        const type   = pickField(r, ['type', 'recommendationType'], '-');
+        const scoreV = pickField(r, ['predictedScore', 'score'], null);
+        const score  = (scoreV != null && !Number.isNaN(Number(scoreV)))
+          ? Number(scoreV).toFixed(2)
+          : '-';
+
+        const params        = pickField(r, ['paramsJson', 'params', 'parameters'], null);
+        const explanations  = pickField(r, ['explanationsJson', 'explanations', 'explanation'], null);
+
+        return `
+          <tr>
+            <td>${createdText}</td>
+            <td>${type}</td>
+            <td>${score}</td>
+            <td>${prettyParams(r.paramsJson)}</td>
+            <td><div class="json-cell">${prettyExplanations(explanations)}</div></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+
+    async function loadRecommendations(){
+      const hintEl = qs('#recoHint');
+      if(!currentExperimentId){
+        setHint(hintEl, '실험을 먼저 선택하세요.');
+        qs('#recoTbody').innerHTML = '<tr><td colspan="5" class="empty">실험을 선택하면 추천이 표시됩니다.</td></tr>';
+        return;
+      }
+      setHint(hintEl, '추천을 불러오는 중…');
+      try{
+        const js = await fetchJSON(`${API_BASE}/experiments/${encodeURIComponent(currentExperimentId)}/recommendations?size=50&sort=createdAt,DESC`);
+        const rows = asList(js);
+        renderRecommendations(rows);
+        setHint(hintEl, `${rows.length}개 추천`);
+      }catch(e){
+        console.error(e);
+        qs('#recoTbody').innerHTML = '<tr><td colspan="5" class="empty">추천을 불러오지 못했습니다.</td></tr>';
+        setHint(hintEl, '추천을 불러오지 못했습니다.', false);
+      }
+    }
+
+    qs('#recoRefreshBtn').addEventListener('click', async ()=>{
+      if(!currentExperimentId){
+        alert('먼저 실험을 선택하세요.');
+        return;
+      }
+      const hintEl = qs('#recoHint');
+      setHint(hintEl, 'AI 서비스 호출 중…');
+      try{
+        await fetch(`${API_BASE}/experiments/${encodeURIComponent(currentExperimentId)}/recommendations/refresh`, {
+          method: 'POST',
+          headers: { ...headers(), 'Content-Type': 'application/json' }
+        });
+        await loadRecommendations();
+      }catch(e){
+        console.error(e);
+        setHint(hintEl, 'AI 추천 호출에 실패했습니다.', false);
+      }
+    });
+
+
+</script>
+</body>
+</html>
+

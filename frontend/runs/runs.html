@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Runs · AI Experiment Tracker</title>
+  <style>
+    :root { --bg:#f6f7fb; --panel:#fff; --ink:#111827; --muted:#6b7280; --brand:#0f2b5b; --brand-weak:#183a78; --radius:16px; --shadow:0 10px 18px rgba(18,28,45,.08) }
+    *{ box-sizing:border-box }
+    body{ margin:0; font-family:ui-sans-serif,system-ui,-apple-system,"Noto Sans KR"; color:var(--ink); background:var(--bg) }
+
+    /* Header */
+    header{ background:linear-gradient(180deg,#0f2b5b,#183a78); color:#fff; padding:14px 20px; font-weight:800; text-align:center }
+
+    /* Layout with sidebar */
+    .layout{ max-width:1280px; margin:0 auto; padding:18px; display:grid; gap:18px; grid-template-columns:240px 1fr; }
+    @media (max-width:980px){ .layout{ grid-template-columns:1fr } .sidebar{ order:2 } }
+
+    /* Sidebar nav */
+    .sidebar{ background:var(--panel); border-radius:16px; box-shadow:var(--shadow); padding:16px; border:1px solid #eef1f7; height:fit-content; }
+    .sidebar h2{ font-size:12px; color:var(--muted); margin:0 0 10px; letter-spacing:.6px }
+    .nav{ list-style:none; padding:0; margin:0; display:grid; gap:6px }
+    .nav a{ display:block; padding:10px 12px; border-radius:12px; text-decoration:none; color:var(--ink) }
+    .nav a:hover{ background:#f0f4ff }
+    .nav a.is-active{ background:#e6edff; font-weight:700 }
+    .nav ul { list-style:none; margin:4px 0 0 16px; padding:0; border-left:1px solid #e0e4f2; }
+    .nav ul li a { font-size:13px; color:#444; }
+
+    .main { display: grid; gap: 16px; }
+
+    /* Cards & form controls */
+    .card{ background:var(--panel); border-radius:16px; box-shadow:var(--shadow); padding:16px; border:1px solid #eef1f7 }
+    .row{ display:grid; gap:10px; grid-template-columns: minmax(260px,1.2fr) minmax(260px,1.2fr) minmax(200px,1fr) auto; }
+    label{ font-size:12px; color:var(--muted) }
+    select,input,textarea,button{ padding:10px 12px; border:1px solid #dee3ef; border-radius:12px; font:inherit; background:#fff }
+    select, input, textarea { width: 100%; }
+    button.btn{ background:#111827; color:#fff; border:none; font-weight:700; cursor:pointer }
+    button.btn.secondary{ background:#fff; color:#111827; border:1px solid #dee3ef; font-weight:700; }
+    button.danger{ background:#b91c1c; color:#fff; }
+    button, .btn { white-space: nowrap; line-height: 1; }
+
+    /* Table */
+    .table{ width:100%; border-collapse:collapse }
+    .table th,.table td{ padding:10px 12px; border-bottom:1px solid #f0f2f7; text-align:left; vertical-align:top }
+    .table th{ font-size:12px; color:var(--muted); font-weight:800 }
+
+    /* Utils */
+    .flex{ display:flex; gap:8px; align-items:center; flex-wrap: nowrap; }
+    .right{ margin-left:auto }
+    .empty{ padding:18px; color:var(--muted); text-align:center }
+
+    .table th,
+    .table td {
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+<header>Runs</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <h2>MENU</h2>
+    <nav>
+      <ul class="nav">
+        <li><a href="/index">Home</a></li>
+        <li>
+          <a href="/projects">Projects</a>
+          <ul>
+            <li><a href="/experiments">Experiments</a></li>
+            <li><a href="/runs" class="is-active">Runs</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Main content -->
+  <section class="main">
+    <section class="card">
+      <div class="row">
+        <div>
+          <label>Project</label>
+          <select id="project"></select>
+        </div>
+        <div>
+          <label>Experiment (선택)</label>
+          <select id="experiment"><option value="">— All experiments —</option></select>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="status">
+            <option value="">— All —</option>
+            <option>PENDING</option>
+            <option>RUNNING</option>
+            <option>COMPLETED</option>
+            <option>FAILED</option>
+            <option>CANCELED</option>
+          </select>
+        </div>
+        <div class="flex">
+          <button class="btn" id="btnReload">Reload</button>
+          <button class="btn secondary" id="btnOpenExp">실험 페이지</button>
+        </div>
+      </div>
+      <p id="hint" style="color:#6b7280; font-size:12px; margin:8px 0 0">프로젝트 선택 후 불러오세요.</p>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 8px">Create Run</h3>
+      <form id="form" class="row" style="grid-template-columns:2fr 1fr 1fr 140px">
+        <input type="hidden" id="runId" />
+        <input id="notes" type="text" placeholder="notes (optional)" />
+        <input id="seed" type="number" placeholder="seed (optional)" />
+        <select id="newStatus">
+          <option value="PENDING">PENDING</option>
+          <option value="RUNNING">RUNNING</option>
+          <option value="COMPLETED">COMPLETED</option>
+          <option value="FAILED">FAILED</option>
+          <option value="CANCELED">CANCELED</option>
+        </select>
+        <button type="submit" class="btn" id="btnSave">Create</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="flex">
+        <h3 style="margin:0">Runs</h3>
+        <span id="count" class="right" style="color:#6b7280; font-size:12px">—</span>
+      </div>
+      <table class="table">
+        <thead><tr>
+          <th>ID</th>
+          <th>Status</th>
+          <th>Seed</th>
+          <th>Started</th>
+          <th>Finished</th>
+          <th>Elapsed(ms)</th>
+          <th>Notes</th>
+          <th>Actions</th>
+        </tr></thead>
+        <tbody id="tbody"><tr><td colspan="8" class="empty">프로젝트를 선택하세요.</td></tr></tbody>
+      </table>
+    </section>
+  </section>
+</main>
+
+<script>
+  const API = localStorage.getItem('apiBase') || 'http://localhost:8080/api';
+  const auth = ()=> { const b=localStorage.getItem('basicAuth'); return b? {Authorization:'Basic '+b}:{ } };
+  const qs = s => document.querySelector(s);
+
+  async function jget(url){ const r=await fetch(url,{headers:{...auth()}}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
+  async function jsend(url, method, body){
+    const r = await fetch(url,{method, headers:{'Content-Type':'application/json', ...auth()}, body: JSON.stringify(body)});
+    const t = await r.text(); let j=null; try{ j=t?JSON.parse(t):null }catch{}
+    if(!r.ok) throw new Error(j?.error||j?.message||t||('HTTP '+r.status));
+    return j??{};
+  }
+
+  async function listProjects(){ const j=await jget(`${API}/projects?page=0&size=200&sort=createdAt,DESC`); return j?.data?.content??[]; }
+  async function listExperiments(pid){ const j=await jget(`${API}/experiments?projectId=${pid}&page=0&size=200&sort=createdAt,DESC`); return j?.data?.content??[]; }
+  async function listRuns(pid, eid){
+    const q = new URLSearchParams({ page:0, size:200, sort:'startedAt,DESC' });
+    if(pid) q.set('projectId', pid);
+    if(eid) q.set('experimentId', eid);
+    const j=await jget(`${API}/runs?${q.toString()}`); return j?.data?.content??[];
+  }
+  async function createRun(b){ return jsend(`${API}/runs`, 'POST', b); }
+  async function updateRun(id, b){ return jsend(`${API}/runs/${id}`, 'PATCH', b); }
+  async function deleteRun(id){ return jsend(`${API}/runs/${id}`, 'DELETE'); }
+
+  function fillSelect($el, list, textKey, valueKey, firstLabel){
+    $el.innerHTML='';
+    if(firstLabel) $el.insertAdjacentHTML('beforeend', `<option value="">${firstLabel}</option>`);
+    for(const x of list){
+      const t = x[textKey] || x[valueKey] || x.id;
+      $el.insertAdjacentHTML('beforeend', `<option value="${x[valueKey]||x.id}">${t}</option>`);
+    }
+  }
+
+  function render(rows){
+    const $tbody = qs('#tbody');
+    if(!rows.length){ $tbody.innerHTML = '<tr><td colspan="8" class="empty">데이터가 없습니다.</td></tr>'; qs('#count').textContent='0 items'; return; }
+    $tbody.innerHTML = rows.map(r=>{
+      const started = r.startedAt ? new Date(r.startedAt).toLocaleString() : '-';
+      const finished = r.finishedAt ? new Date(r.finishedAt).toLocaleString() : '-';
+      return `<tr data-id="${r.id}">
+        <td>${r.id}</td>
+        <td><strong>${r.status}</strong></td>
+        <td>${r.seed ?? ''}</td>
+        <td>${started}</td>
+        <td>${finished}</td>
+        <td>${r.elapsedMs ?? ''}</td>
+        <td>${(r.notes||'').replace(/</g,'&lt;')}</td>
+        <td class="flex">
+          <button class="btn secondary" data-action="start">Start</button>
+          <button class="btn secondary" data-action="finish">Finish</button>
+          <button class="btn secondary" data-action="metrics">Metrics</button>
+          <button class="btn secondary" data-action="artifacts">Artifacts</button>
+          <button class="btn danger" data-action="del">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+    qs('#count').textContent = `${rows.length} items`;
+  }
+
+  async function refresh(){
+    const pid = qs('#project').value;
+    const eid = qs('#experiment').value || '';
+    if(!pid){ qs('#tbody').innerHTML='<tr><td colspan="8" class="empty">프로젝트를 선택하세요.</td></tr>'; return; }
+    try{
+      const runs = await listRuns(pid, eid || undefined);
+      render(runs);
+      qs('#hint').textContent='완료';
+    }catch(e){ qs('#hint').textContent='불러오기 실패: '+e.message; }
+  }
+
+  // events
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    const $p = qs('#project');
+    const $e = qs('#experiment');
+
+    const urlp = new URLSearchParams(location.search);
+    let initPid = urlp.get('projectId') || localStorage.getItem('runs.selectedProjectId') || '';
+    let initEid = urlp.get('experimentId') || localStorage.getItem('runs.selectedExperimentId') || '';
+
+    try{
+      const projects = await listProjects();
+      fillSelect($p, projects, 'projectName', 'id', '— Select project —');
+
+      if (initPid && projects.some(p => (p.id === initPid))) {
+      $p.value = initPid;
+      }
+
+      if ($p.value) {
+        const exps = await listExperiments($p.value);
+        fillSelect($e, exps, 'experimentName', 'id', '— All experiments —');
+        if (initEid && exps.some(x => (x.id === initEid))) {
+          $e.value = initEid;
+        }
+        await refresh();
+        qs('#hint').textContent='완료';
+      } else {
+        qs('#hint').textContent='프로젝트 선택 후 불러오세요.';
+      }
+    }catch{ qs('#hint').textContent='프로젝트 목록 로딩 실패'; }
+
+  $p.addEventListener('change', async ()=> {
+    const pid = $p.value || '';
+    localStorage.setItem('runs.selectedProjectId', pid);
+
+    const $e = qs('#experiment');
+
+    // 프로젝트 선택이 해제된 경우
+    if (!pid) {
+      $e.innerHTML = '<option value="">— All experiments —</option>';
+      localStorage.removeItem('runs.selectedExperimentId');
+      qs('#tbody').innerHTML = '<tr><td colspan="8" class="empty">프로젝트를 선택하세요.</td></tr>';
+      qs('#count').textContent = '—';
+      qs('#hint').textContent = '프로젝트 선택 후 불러오세요.';
+      return;
+    }
+
+    // 새 프로젝트에 맞는 experiment 목록 로드
+    try {
+      const exps = await listExperiments(pid);
+      fillSelect($e, exps, 'experimentName', 'id', '— All experiments —');
+      localStorage.removeItem('runs.selectedExperimentId');   // 실험 선택 초기화
+    } catch (e) {
+      console.error(e);
+      $e.innerHTML = '<option value="">— All experiments —</option>';
+      qs('#hint').textContent = '실험 목록 로드 실패';
+    }
+
+    // 프로젝트가 바뀌었으니 Run 목록도 새로
+    await refresh();
+  });
+
+    $e.addEventListener('change', ()=> {
+      const eid = $e.value || '';
+      localStorage.setItem('runs.selectedExperimentId', eid);
+    });
+
+    qs('#btnReload').addEventListener('click', refresh);
+    qs('#btnOpenExp').addEventListener('click', ()=>{
+      const pid = $p.value; if(!pid) return alert('프로젝트 먼저 선택!');
+      location.href = `/experiments?projectId=${encodeURIComponent(pid)}`;
+    });
+
+    qs('#tbody').addEventListener('click', async e=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      const tr = btn.closest('tr'); const id = tr?.dataset?.id;
+      if(btn.dataset.action==='del'){
+        if(!confirm('삭제할까요?')) return;
+        try{ await deleteRun(id); await refresh(); } catch(err){ alert('삭제 실패: '+err.message); }
+        return;
+      }
+
+      if(btn.dataset.action==='metrics'){
+       const pid = qs('#project').value;
+       const eid = qs('#experiment').value || '';
+       const q = new URLSearchParams({ runId: id });
+       if (pid) q.set('projectId', pid);
+       if (eid) q.set('experimentId', eid);
+       // Metrics 탐색 페이지로 이동 (이미 만들어둔 metrics.html이거나 서버 라우팅)
+       location.href = `/metrics?${q.toString()}`;
+       return;
+      }
+
+      if(btn.dataset.action==='artifacts'){
+       const pid = qs('#project').value;
+       const eid = qs('#experiment').value || '';
+       const q = new URLSearchParams({ runId: id });
+       if (pid) q.set('projectId', pid);
+       if (eid) q.set('experimentId', eid);
+       location.href = `/artifacts?${q.toString()}`;
+       return;
+      }
+
+      if(btn.dataset.action==='start'){
+        try{ await updateRun(id, { status:'RUNNING' }); await refresh(); } catch(err){ alert('변경 실패: '+err.message); }
+        return;
+      }
+      if(btn.dataset.action==='finish'){
+        try{ await updateRun(id, { status:'COMPLETED' }); await refresh(); } catch(err){ alert('변경 실패: '+err.message); }
+        return;
+      }
+    });
+
+    qs('#form').addEventListener('submit', async ev=>{
+      ev.preventDefault();
+      const pid = qs('#project').value; const eid = qs('#experiment').value;
+      if(!pid || !eid) return alert('Project/Experiment를 선택하세요.');
+      const body = {
+        projectId: pid,
+        experimentId: eid,
+        status: qs('#newStatus').value || 'PENDING',
+        seed: qs('#seed').value ? Number(qs('#seed').value) : null,
+        notes: qs('#notes').value || null
+      };
+      try{ await createRun(body); qs('#notes').value=''; qs('#seed').value=''; await refresh(); }
+      catch(err){ alert('생성 실패: '+err.message); }
+    });
+  });
+</script>
+</body>
+</html>

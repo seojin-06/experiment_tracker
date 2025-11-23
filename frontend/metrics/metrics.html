@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metrics · AI Experiment Tracker</title>
+  <style>
+    :root { --bg:#f6f7fb; --panel:#fff; --ink:#111827; --muted:#6b7280; --brand:#0f2b5b; --brand-weak:#183a78; --radius:16px; --shadow:0 10px 18px rgba(18,28,45,.08) }
+    *{ box-sizing:border-box }
+    body{ margin:0; font-family:ui-sans-serif,system-ui,-apple-system,"Noto Sans KR"; color:var(--ink); background:var(--bg) }
+
+    header{ background:linear-gradient(180deg,#0f2b5b,#183a78); color:#fff; padding:14px 20px; font-weight:800; text-align:center }
+
+    .layout{ max-width:1280px; margin:0 auto; padding:18px; display:grid; gap:18px; grid-template-columns:240px 1fr; }
+    @media (max-width:980px){ .layout{ grid-template-columns:1fr } .sidebar{ order:2 } }
+
+    .sidebar{ background:var(--panel); border-radius:16px; box-shadow:var(--shadow); padding:16px; border:1px solid #eef1f7; height:fit-content; }
+    .sidebar h2{ font-size:12px; color:var(--muted); margin:0 0 10px; letter-spacing:.6px }
+    .nav{ list-style:none; padding:0; margin:0; display:grid; gap:6px }
+    .nav a{ display:block; padding:10px 12px; border-radius:12px; text-decoration:none; color:var(--ink) }
+    .nav a:hover{ background:#f0f4ff }
+    .nav ul { list-style:none; margin:4px 0 0 16px; padding:0; border-left:1px solid #e0e4f2; }
+    .nav ul li a { font-size:13px; color:#444; }
+
+    .main { display: grid; gap: 16px; }
+
+    .card{ background:var(--panel); border-radius:16px; box-shadow:var(--shadow); padding:16px; border:1px solid #eef1f7 }
+    .row{ display:grid; gap:10px; grid-template-columns: 1fr 160px; }
+    @media (max-width:720px){ .row{ grid-template-columns:1fr } }
+    label{ font-size:12px; color:var(--muted) }
+    input,select,button{ padding:10px 12px; border:1px solid #dee3ef; border-radius:12px; font:inherit; background:#fff }
+    button{ background:#111827; color:#fff; font-weight:700; border:none; cursor:pointer; white-space:nowrap }
+    .hint{ color:var(--muted); font-size:12px; margin:8px 0 0 }
+
+    table{ width:100%; border-collapse:collapse }
+    th,td{ padding:8px 10px; border-bottom:1px solid #eef1f7; text-align:left; vertical-align:top }
+    th{ font-size:12px; color:var(--muted) }
+
+    .flex{ display:flex; gap:8px; align-items:center }
+    .right{ margin-left:auto }
+    .empty{ color:var(--muted) }
+
+    .env-grid { display:grid; gap:6px; grid-template-columns: 120px 1fr; font-size:14px; }
+    .env-grid .k { color:var(--muted); }
+    .env-grid .v { font-weight:600; }
+
+    .env-section { margin-top:12px; }
+    .env-section h4 { margin:10px 0 6px; font-size:13px; color:var(--muted); }
+
+    table.kv { width:100%; border-collapse:collapse; }
+    table.kv td { padding:6px 8px; border-bottom:1px solid #eef1f7; }
+    table.kv td:first-child { width:30%; color:var(--muted); white-space:nowrap; }
+
+    /* Summary grid */
+    .grid{ display:grid; gap:10px; grid-template-columns: repeat(2, minmax(0,1fr)); }
+    @media (max-width:720px){ .grid{ grid-template-columns: 1fr } }
+    .kvp{ display:flex; gap:8px }
+    .kvp label{ width:190px; flex:0 0 auto; font-size:12px; color:var(--muted) }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+  </style>
+</head>
+<body>
+<header>Metrics</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <h2>MENU</h2>
+    <ul class="nav">
+      <li><a href="/index">Home</a></li>
+      <li>
+        <a href="/projects">Projects</a>
+        <ul>
+          <li><a href="/experiments">Experiments</a></li>
+          <li><a href="/runs">Runs</a></li>
+        </ul>
+      </li>
+    </ul>
+  </aside>
+
+  <section class="main">
+    <!-- Context & Controls -->
+    <section class="card">
+      <h3 style="margin:0 0 10px">Metrics Explorer</h3>
+      <p id="ctx" class="hint"></p>
+      <p id="hint" class="hint"></p>
+      <div class="row">
+        <input id="key" placeholder="metric key (e.g. train/loss)" />
+        <button id="load">Load</button>
+      </div>
+    </section>
+
+    <!-- ✅ Run Summary -->
+    <section class="card" id="summaryCard">
+      <div class="flex">
+        <h3 style="margin:0">Run Summary</h3>
+        <span id="summaryHint" class="hint right"></span>
+      </div>
+      <div class="grid mono" id="summaryGrid">
+        <!-- JS에서 채움 -->
+      </div>
+      <p class="hint" id="summaryNotes"></p>
+    </section>
+
+    <!-- Hyperparams -->
+    <section class="card">
+      <div class="flex">
+        <h3 style="margin:0">Hyperparams</h3>
+        <span id="hHint" class="hint right"></span>
+      </div>
+      <table>
+        <thead>
+        <tr><th>key</th><th>type</th><th>value</th><th>source</th></tr>
+        </thead>
+        <tbody id="htbody">
+        <tr><td colspan="4" class="empty">데이터 없음</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <div class="flex">
+        <h3 style="margin:0">Environment Snapshot</h3>
+        <span id="envHint" class="hint right"></span>
+      </div>
+      <div id="envMeta" class="env-grid"></div>
+
+      <div class="env-section">
+        <h4>Libraries</h4>
+        <table class="kv"><tbody id="envLibsBody">
+        <tr><td colspan="2" class="empty">데이터 없음</td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="env-section">
+        <h4>Env Vars</h4>
+        <table class="kv"><tbody id="envVarsBody">
+        <tr><td colspan="2" class="empty">데이터 없음</td></tr>
+        </tbody></table>
+      </div>
+    </section>
+
+    <!-- Results & Chart -->
+    <section class="card">
+      <div class="flex">
+        <h3 style="margin:0">Results</h3>
+        <button id="back" class="right">← Back to Runs</button>
+      </div>
+      <table>
+        <thead><tr><th>step</th><th>key</th><th>value</th><th>recordedAt</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="4" class="empty">데이터 없음</td></tr></tbody>
+      </table>
+      <canvas id="chart" height="220" style="width:100%; max-height:280px; margin-top:12px"></canvas>
+    </section>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const API = localStorage.getItem('apiBase') || 'http://localhost:8080/api';
+  const auth = ()=> { const b=localStorage.getItem('basicAuth'); return b? {Authorization:'Basic '+b}:{ } };
+  const qs = s => document.querySelector(s);
+  const sp = new URLSearchParams(location.search);
+
+  const runId = sp.get('runId');
+  const projectIdQ = sp.get('projectId');
+  const experimentIdQ = sp.get('experimentId');
+
+  (function initCtx(){
+    const ctx = [];
+    ctx.push(`runId=${runId || '(none)'}`);
+    if(projectIdQ) ctx.push(`projectId=${projectIdQ}`);
+    if(experimentIdQ) ctx.push(`experimentId=${experimentIdQ}`);
+    qs('#ctx').textContent = ctx.join('  •  ');
+  })();
+
+  async function jget(url){
+    const r=await fetch(url,{headers:{...auth()}});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }
+
+  // ---- Metrics list/load ----
+  async function listMetrics(rid, key){
+    const q = new URLSearchParams({ page:0, size:500 });
+    if(key) q.set('key', key);
+    q.append('sort','step,ASC');
+    q.append('sort','recordedAt,ASC');
+    const j = await jget(`${API}/runs/${rid}/metrics?${q.toString()}`);
+    return j?.data?.content ?? [];
+  }
+
+  function firstKey(rows){
+    const ks = [...new Set(rows.map(m=>m.key))];
+    return ks.length ? ks.sort()[0] : '';
+  }
+
+  function render(rows){
+    const $ = qs('#tbody');
+    if(!rows.length){ $.innerHTML = '<tr><td colspan="4" class="empty">데이터 없음</td></tr>'; return; }
+    $.innerHTML = rows.map(m=>`
+      <tr>
+        <td>${m.step ?? ''}</td>
+        <td>${m.key || ''}</td>
+        <td>${m.value ?? ''}</td>
+        <td>${m.recordedAt || ''}</td>
+      </tr>`).join('');
+  }
+
+  // ---- Chart ----
+  let chart;
+  function drawChart(rows, labelText){
+    const canvas = document.getElementById('chart');
+    const ctx = canvas.getContext('2d');
+    if (!rows.length){
+      if (chart) { chart.destroy(); chart = null; }
+      return;
+    }
+    const data = [...rows].sort((a,b)=>(a.step??0)-(b.step??0) || (a.recordedAt||'').localeCompare(b.recordedAt||''));
+    const labels = data.map(r=> r.step ?? '');
+    const values = data.map(r=> r.value ?? null);
+    if(chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type:'line',
+      data:{ labels, datasets:[{ label: labelText || 'metric', data: values }] },
+      options:{ animation:false, plugins:{legend:{display:true}}, scales:{ x:{title:{display:true,text:'step'}}, y:{beginAtZero:false} } }
+    });
+  }
+
+  // ---- ✅ Run Summary ----
+  async function loadSummary(rid){
+    if(!rid) return;
+    try {
+      qs('#summaryHint').textContent = 'Loading...';
+      const j = await jget(`${API}/runs/${rid}/summary`);
+      const s = j?.data;
+      const grid = qs('#summaryGrid');
+      if(!s){
+        grid.innerHTML = '<div class="empty">요약 데이터가 없습니다.</div>';
+        qs('#summaryNotes').textContent = '';
+        qs('#summaryHint').textContent = '완료';
+        return;
+      }
+
+      const fmt = v => (v===null || v===undefined) ? '' : v;
+      grid.innerHTML = `
+        <div class="kvp"><label>Best Accuracy</label><div>${fmt(s.bestAccuracy)}</div></div>
+        <div class="kvp"><label>Best Epoch</label><div>${fmt(s.bestEpoch)}</div></div>
+        <div class="kvp"><label>Last Epoch</label><div>${fmt(s.lastEpoch)}</div></div>
+        <div class="kvp"><label>Last Step</label><div>${fmt(s.lastStep)}</div></div>
+        <div class="kvp"><label>Predicted Final Acc.</label><div>${fmt(s.predictedFinalAccuracy)}</div></div>
+        <div class="kvp"><label>Early Stop Epoch</label><div>${fmt(s.earlyStopEpoch)}</div></div>
+      `;
+      qs('#summaryNotes').textContent = s.notes ? `Notes: ${s.notes}` : '';
+      qs('#summaryHint').textContent = '완료';
+    } catch(e){
+      console.error(e);
+      qs('#summaryGrid').innerHTML = '<div class="empty">요약 불러오기 실패</div>';
+      qs('#summaryHint').textContent = e.message || 'error';
+    }
+  }
+
+  // Back
+  qs('#back').addEventListener('click', ()=>{
+    const pid = projectIdQ || localStorage.getItem('runs.selectedProjectId') || '';
+    const eid = experimentIdQ || localStorage.getItem('runs.selectedExperimentId') || '';
+    const q = new URLSearchParams();
+    if(pid) q.set('projectId', pid);
+    if(eid) q.set('experimentId', eid);
+    location.href = `/runs?${q.toString()}`;
+  });
+
+  // Load metrics & chart (and summary)
+  qs('#load').addEventListener('click', async ()=>{
+    if(!runId) return alert('runId가 없습니다. Runs에서 Metrics 버튼으로 진입하세요.');
+    try{
+      qs('#hint').textContent = 'Loading...';
+      // 요약 먼저
+      await loadSummary(runId);
+
+      qs('#envHint').textContent = 'Loading...';
+      await loadEnv(runId);
+      qs('#envHint').textContent = '완료';
+
+      document.querySelector('#hHint').textContent = 'Loading...';
+      const hrows = await listHyperparams(runId);
+      renderHyperparams(hrows);
+      document.querySelector('#hHint').textContent = `완료: ${hrows.length} keys`;
+
+      let key = qs('#key').value.trim();
+      if (!key){
+        const all = await listMetrics(runId, null);
+        key = firstKey(all);
+        if (!key){
+          render([]); drawChart([], '');
+          qs('#hint').textContent = '완료 (표시할 키가 없습니다)';
+          return;
+        }
+      }
+      const rows = await listMetrics(runId, key);
+      render(rows);
+      drawChart(rows, key);
+      qs('#hint').textContent = `완료: ${rows.length} rows`;
+    }catch(e){
+      console.error(e);
+      qs('#hint').textContent = '불러오기 실패: ' + (e.message||'error');
+      const h = document.querySelector('#hHint'); if (h) h.textContent = '불러오기 실패';
+      const eh = document.querySelector('#envHint'); if (eh) eh.textContent = '불러오기 실패';
+    }
+  });
+
+  // 자동 로드
+  if (runId) {
+    qs('#load').click();
+  }
+
+  async function listHyperparams(rid){
+    const j = await jget(`${API}/runs/${rid}/hyperparams`);
+    // ApiResponse<{ data: [] }> 가정. 래핑 없으면 j 로 바꿔.
+    return j?.data ?? [];
+  }
+
+  function fmtHval(row){
+    switch (row.valueType) {
+      case 'NUMBER': return row.valueNumeric;
+      case 'BOOLEAN': return row.valueBoolean;
+      case 'JSON': return row.valueJson;
+      default: return row.valueString;
+    }
+  }
+
+  function renderHyperparams(rows){
+    const $ = document.querySelector('#htbody');
+    if (!rows.length){
+      $.innerHTML = '<tr><td colspan="4" class="empty">데이터 없음</td></tr>';
+      return;
+    }
+    $.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.key}</td>
+        <td>${r.valueType}</td>
+        <td>${fmtHval(r)}</td>
+        <td>${r.source || ''}</td>
+      </tr>
+    `).join('');
+  }
+
+  // ---- Env Snapshot 렌더 (대상 엘리먼트 수정)
+  async function loadEnv(rid){
+    try{
+      const j = await jget(`${API}/runs/${rid}/env`);
+      const data = j?.data || null;
+
+      const metaEl = qs('#envMeta');
+      const libsEl = qs('#envLibsBody');
+      const varsEl = qs('#envVarsBody');
+
+      if(!data){
+        metaEl.innerHTML = '<div class="empty">데이터 없음</div>';
+        libsEl.innerHTML = '<tr><td colspan="2" class="empty">데이터 없음</td></tr>';
+        varsEl.innerHTML = '<tr><td colspan="2" class="empty">데이터 없음</td></tr>';
+        return;
+      }
+
+      // Meta 상단 그리드
+      const metaRows = [
+        ['OS', [data.osName, data.osVersion].filter(Boolean).join(' ') || ''],
+        ['Python', data.pythonVersion || ''],
+        ['Commit', data.commitHash || ''],
+        ['GPU', data.gpu || data.gpuModel || (data.envVars?.GPU) || '']
+      ].filter(([,v]) => v);
+
+      metaEl.innerHTML = metaRows.length
+        ? metaRows.map(([k,v]) => `
+            <div class="k">${escapeHtml(k)}</div>
+            <div class="v">${escapeHtml(v)}</div>
+          `).join('')
+        : '<div class="empty">메타 데이터 없음</div>';
+
+      // Libraries & Env Vars 표
+      renderKVBody(libsEl, data.libraries || {});
+      renderKVBody(varsEl, data.envVars || {});
+    } catch(e){
+      console.error(e);
+      const metaEl = qs('#envMeta');
+      const libsEl = qs('#envLibsBody');
+      const varsEl = qs('#envVarsBody');
+      metaEl.innerHTML = '<div class="empty">불러오기 실패</div>';
+      libsEl.innerHTML = '<tr><td colspan="2" class="empty">불러오기 실패</td></tr>';
+      varsEl.innerHTML = '<tr><td colspan="2" class="empty">불러오기 실패</td></tr>';
+      throw e;
+    }
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function renderKVBody(tbodyEl, obj){
+    const entries = Object.entries(obj || {});
+    if(!entries.length){
+      tbodyEl.innerHTML = '<tr><td colspan="2" class="empty">데이터 없음</td></tr>';
+      return;
+    }
+    // 알파벳 순 정렬(가독성 위해)
+    entries.sort((a,b)=> a[0].localeCompare(b[0]));
+    tbodyEl.innerHTML = entries.map(
+      ([k,v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`
+    ).join('');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Projects · AI Experiment Tracker</title>
+  <style>
+    :root { --bg:#f6f7fb; --panel:#fff; --ink:#111827; --muted:#6b7280; --brand:#0f2b5b; --brand-weak:#183a78; --ring:#dbe3ff; --radius:16px; --shadow:0 10px 18px rgba(18,28,45,.08) }
+    *{ box-sizing:border-box } html,body{ height:100% }
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Helvetica, Arial; color:var(--ink); background:var(--bg) }
+    .app-header{ position:sticky; top:0; z-index:10; width:100%; background:linear-gradient(180deg,var(--brand),var(--brand-weak)); color:#fff; padding:14px 22px; box-shadow:var(--shadow) }
+    .app-header__title{ margin:0; font-size:18px; font-weight:800; text-align:center }
+
+    .layout{ display:grid; grid-template-columns:240px 1fr; gap:18px; padding:18px; max-width:1280px; margin:0 auto }
+    @media (max-width:960px){ .layout{ grid-template-columns:1fr } .sidebar{ order:2 } }
+
+    .sidebar{ background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 16px; height:fit-content }
+    .sidebar h2{ font-size:14px; color:var(--muted); margin:6px 0 12px; letter-spacing:.6px }
+    .nav{ list-style:none; padding:0; margin:0; display:grid; gap:6px }
+    .nav a{ display:block; padding:10px 12px; border-radius:12px; text-decoration:none; color:var(--ink) }
+    .nav a:hover{ background:#f0f4ff }
+    .nav a.is-active{ background:#e6edff; font-weight:700 }
+    .nav ul { list-style:none; margin:4px 0 0 16px; padding:0; border-left:1px solid #e0e4f2; }
+    .nav ul li a { font-size:13px; color:#444; }
+
+    .main{ display:grid; gap:16px }
+    .card{ background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; border:1px solid #eef1f7 }
+    .section-title{ margin:0 0 6px; font-weight:800; font-size:14px; color:#0f172a }
+    .hint{ color:var(--muted); font-size:12px }
+
+    .row{ display:grid; gap:10px; align-items:center; grid-template-columns:1fr 120px 120px }
+    @media (max-width:720px){ .row{ grid-template-columns:1fr } }
+
+    input[type="text"], textarea, button{ padding:10px 12px; border:1px solid #dee3ef; border-radius:12px; font:inherit; background:#fff }
+    textarea{ resize:vertical; min-height:70px }
+    input:focus, textarea:focus{ box-shadow:0 0 0 4px var(--ring); border-color:#c9d6ff }
+    .btn{ background:#111827; color:#fff; border:none; cursor:pointer; font-weight:700 }
+    .btn.secondary{ background:#334155 }
+    .btn.danger{ background:#b91c1c }
+    .btn:disabled{ opacity:.6; cursor:not-allowed }
+
+    .table{ width:100%; border-collapse:collapse }
+    .table th,.table td{ padding:10px 12px; border-bottom:1px solid #f0f2f7; text-align:left; vertical-align:top }
+    .table th{ font-size:12px; color:var(--muted); font-weight:800 }
+    .empty{ padding:18px; color:var(--muted); text-align:center }
+
+    .flex{ display:flex; gap:8px; align-items:center }
+    .right{ margin-left:auto }
+
+    .form-grid { display: grid; gap: 12px; }
+    .actions { display: flex; gap: 8px; align-items: center; }
+
+    textarea { resize: vertical; min-height: 140px; }
+
+  </style>
+</head>
+<body>
+<header class="app-header">
+  <h1 class="app-header__title">Projects · AI Experiment Tracker</h1>
+</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <h2>MENU</h2>
+    <nav>
+      <ul class="nav">
+        <li><a href="/index">Home</a></li>
+        <li>
+          <a href="/projects" class="is-active">Projects</a>
+          <ul>
+            <li><a href="/experiments">Experiments</a></li>
+            <li><a href="/runs">Runs</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+  </aside>
+
+  <section class="main">
+    <div class="card">
+      <div class="flex">
+        <h3 class="section-title">Create / Edit Project</h3>
+        <span id="countBadge" class="right hint">—</span>
+      </div>
+      <form id="projectForm" class="form-grid">
+        <input type="hidden" id="projectId" />
+        <input id="projectName" type="text" placeholder="Project name" required />
+        <textarea id="projectDesc" placeholder="Description (optional)" rows="6"></textarea>
+        <div class="actions">
+          <button class="btn" id="saveBtn" type="submit">Create</button>
+        </div>
+      </form>
+      <p class="hint" id="statusText">/api/projects 에 연결됩니다. 인증이 있다면 콘솔에서 basicAuth를 설정하세요.</p>
+    </div>
+
+    <div class="card">
+      <table class="table" aria-label="프로젝트 목록">
+        <thead>
+        <tr>
+          <th>Project Name</th>
+          <th>Description</th>
+          <th>Created At</th>
+          <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody id="projectsTbody">
+        <tr><td colspan="4" class="empty">로딩 중…</td></tr>
+        </tbody>
+      </table>
+      <div class="flex" style="margin-top:10px">
+        <div class="hint" id="pageInfo">page 1</div>
+        <div class="right flex">
+          <button class="btn secondary" id="prevBtn">Prev</button>
+          <button class="btn secondary" id="nextBtn">Next</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  // ===== Config =====
+  const API_BASE = localStorage.getItem('apiBase') || 'http://localhost:8080/api';
+  function authHeader(){ const b = localStorage.getItem('basicAuth'); return b ? { 'Authorization': 'Basic '+b } : {}; }
+
+  // ===== API helpers =====
+  async function apiGet(url){ const r = await fetch(url, { headers: { ...authHeader() }}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
+  async function apiJson(url, method, body){
+    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(body) });
+    if(method==='DELETE') return { ok: r.ok };
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j?.error || ('HTTP '+r.status));
+    return j;
+  }
+
+  async function listProjects(page=0, size=10){
+    const j = await apiGet(`${API_BASE}/projects?page=${page}&size=${size}&sort=createdAt,DESC`);
+    return j?.data || { content: [], page:0, size, totalPages:1, totalElements:0 };
+  }
+  async function createProject(projectName, description){ return apiJson(`${API_BASE}/projects`, 'POST', { projectName, description }); }
+  async function deleteProject(id){ return apiJson(`${API_BASE}/projects/${id}`, 'DELETE'); }
+  async function updateProject(id, projectName, description){
+    const body = { projectName, description };
+
+    try {
+      return await apiJson(`${API_BASE}/projects/${id}`, 'PATCH', body);
+    } catch (e) {
+      console.warn('PATCH 실패, PUT으로 폴백합니다:', e.message || e);
+      return await apiJson(`${API_BASE}/projects/${id}`, 'PUT', body);
+    }
+  }
+
+  // ===== State =====
+  const $tbody = document.getElementById('projectsTbody');
+  const $status = document.getElementById('statusText');
+  const $count = document.getElementById('countBadge');
+  const $pageInfo = document.getElementById('pageInfo');
+  const $form = document.getElementById('projectForm');
+  const $id = document.getElementById('projectId');
+  const $name = document.getElementById('projectName');
+  const $desc = document.getElementById('projectDesc');
+  const $save = document.getElementById('saveBtn');
+  const $prev = document.getElementById('prevBtn');
+  const $next = document.getElementById('nextBtn');
+
+  const state = { page:0, size:8, totalPages:1, raw:[] };
+
+  function setStatus(t, ok=true){ $status.textContent=t; $status.style.color = ok? 'var(--muted)' : '#b91c1c'; }
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[c])); }
+
+  function enterCreate(){ $id.value=''; $name.value=''; $desc.value=''; $save.textContent='Create'; }
+  function enterEdit(p){ $id.value=p.id; $name.value=p.projectName; $desc.value=p.description||''; $save.textContent='Save'; window.scrollTo({top:0, behavior:'smooth'}); }
+
+  function rowTemplate(p){
+    const created = p.createdAt ? new Date(p.createdAt).toLocaleString() : '-';
+    return `<tr data-id="${p.id}">
+      <td><strong><a href="/projects/detail?id=${p.id}">${escapeHtml(p.projectName)}</a></strong></td>
+      <td>${escapeHtml(p.description||'')}</td>
+      <td>${created}</td>
+      <td class="flex">
+        <button class="btn secondary" data-action="view">View</button>
+        <button class="btn secondary" data-action="edit">Edit</button>
+        <button class="btn danger" data-action="del">Delete</button>
+      </td>
+    </tr>`;
+  }
+
+
+  function render(){
+    $count.textContent = `${state.raw.length} items`;
+    if(!state.raw.length){ $tbody.innerHTML = '<tr><td colspan="4" class="empty">데이터가 없습니다.</td></tr>'; return; }
+    $tbody.innerHTML = state.raw.map(rowTemplate).join('');
+    $pageInfo.textContent = `page ${state.page+1} / ${Math.max(state.totalPages,1)}`;
+    $prev.disabled = state.page<=0; $next.disabled = state.page+1>=state.totalPages;
+  }
+
+  async function refresh(){
+    setStatus('목록 불러오는 중…');
+    try{ const page = await listProjects(state.page, state.size); state.totalPages = page.totalPages||1; state.raw = page.content||[]; render(); setStatus(`총 ${page.totalElements ?? state.raw.length}개 프로젝트`); }
+    catch(e){ console.error(e); $tbody.innerHTML='<tr><td colspan="4" class="empty">불러오기 실패.</td></tr>'; setStatus(e.message||'에러', false); }
+  }
+
+  // events
+  document.addEventListener('DOMContentLoaded', ()=>{ refresh(); enterCreate(); });
+  $prev.addEventListener('click', ()=>{ if(state.page>0){ state.page--; refresh(); }});
+  $next.addEventListener('click', ()=>{ if(state.page+1<state.totalPages){ state.page++; refresh(); }});
+
+  $tbody.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('button'); if(!btn) return;
+    const tr = btn.closest('tr'); const id = tr?.dataset?.id;
+    const p = state.raw.find(x=>x.id===id);
+
+    if(btn.dataset.action==='view'){ location.href = `/projects/detail?id=${encodeURIComponent(id)}`; return; }
+    if(btn.dataset.action==='edit'){ enterEdit(p); return; }
+    if(btn.dataset.action==='del'){
+      if(!confirm(`정말 삭제할까요?\n${p.projectName}`)) return;
+      try{ await deleteProject(id); alert('삭제되었습니다.'); refresh(); }
+      catch(err){ alert('삭제 실패: '+(err.message||'unknown')); }
+      return;
+    }
+  });
+
+  $form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const id=$id.value.trim(); const name=$name.value.trim(); const desc=$desc.value.trim();
+    if(!name){ alert('Project name은 필수입니다.'); return; }
+    try{ if(id){ await updateProject(id,name,desc); } else { await createProject(name,desc); } enterCreate(); await refresh(); }
+    catch(err){ alert('저장 실패: '+(err.message||'unknown')); }
+  });
+</script>
+</body>
+</html>

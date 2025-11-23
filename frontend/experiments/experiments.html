@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Experiments · AI Experiment Tracker</title>
+    <style>
+        :root { --bg:#f6f7fb; --panel:#fff; --ink:#111827; --muted:#6b7280; --brand:#0f2b5b; --brand-weak:#183a78; --ring:#dbe3ff; --radius:16px; --shadow:0 10px 18px rgba(18,28,45,.08) }
+        *{ box-sizing:border-box } html,body{ height:100% } body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Helvetica, Arial; color:var(--ink); background:var(--bg) }
+        .app-header{ position:sticky; top:0; z-index:10; width:100%; background:linear-gradient(180deg,var(--brand),var(--brand-weak)); color:#fff; padding:14px 22px; box-shadow:var(--shadow) }
+        .app-header__title{ margin:0; font-size:18px; font-weight:800; text-align:center }
+        .layout{ display:grid; grid-template-columns:240px 1fr; gap:18px; padding:18px; max-width:1280px; margin:0 auto }
+        @media (max-width:960px){ .layout{ grid-template-columns:1fr } .sidebar{ order:2 } }
+        .sidebar{ background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 16px; height:fit-content }
+        .sidebar h2{ font-size:14px; color:var(--muted); margin:6px 0 12px; letter-spacing:.6px }
+        .nav{ list-style:none; padding:0; margin:0; display:grid; gap:6px }
+        .nav a{ display:block; padding:10px 12px; border-radius:12px; text-decoration:none; color:var(--ink) }
+        .nav a:hover{ background:#f0f4ff }
+        .nav a.is-active{ background:#e6edff; font-weight:700 }
+        .nav ul { list-style:none; margin:4px 0 0 16px; padding:0; border-left:1px solid #e0e4f2; }
+        .nav ul li a { font-size:13px; color:#444; }
+        .main{ display:grid; gap:16px }
+        .card{ background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; border:1px solid #eef1f7 }
+        .section-title{ margin:0 0 6px; font-weight:800; font-size:14px; color:#0f172a }
+        .hint{ color:var(--muted); font-size:12px }
+        .row{ display:grid; gap:10px; align-items:center; grid-template-columns:220px 1fr 120px }
+        @media (max-width:860px){ .row{ grid-template-columns:1fr } }
+        input[type="text"], textarea, select, button{ padding:10px 12px; border:1px solid #dee3ef; border-radius:12px; font:inherit; background:#fff }
+        textarea{ resize:vertical; min-height:80px }
+        input:focus, textarea:focus, select:focus{ box-shadow:0 0 0 4px var(--ring); border-color:#c9d6ff }
+        .btn{ background:#111827; color:#fff; border:none; cursor:pointer; font-weight:700 }
+        .btn.secondary{ background:#334155 }
+        .btn.danger{ background:#b91c1c }
+        .btn:disabled{ opacity:.6; cursor:not-allowed }
+        .table{ width:100%; border-collapse:collapse }
+        .table th,.table td{ padding:10px 12px; border-bottom:1px solid #f0f2f7; text-align:left; vertical-align:top }
+        .table th{ font-size:12px; color:var(--muted); font-weight:800 }
+        .empty{ padding:18px; color:var(--muted); text-align:center }
+        .flex{ display:flex; gap:8px; align-items:center }
+        .right{ margin-left:auto }
+        .form-grid{ display:grid; gap:12px }
+    </style>
+</head>
+<body>
+<header class="app-header"><h1 class="app-header__title">Experiments</h1></header>
+
+<main class="layout">
+    <aside class="sidebar">
+        <h2>MENU</h2>
+        <nav>
+            <ul class="nav">
+                <li><a href="/index">Home</a></li>
+                <li>
+                    <a href="/projects">Projects</a>
+                    <ul>
+                        <li><a href="/experiments" class="is-active">Experiments</a></li>
+                        <li><a href="/runs">Runs</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <section class="main">
+        <!-- Project select -->
+        <div class="card">
+            <div class="row">
+                <label for="projectSelect">Project</label>
+                <select id="projectSelect"></select>
+                <button id="btnOpenProject" class="btn secondary">열기</button>
+            </div>
+            <p class="hint" id="statusText">프로젝트 목록 로딩 중…</p>
+        </div>
+
+        <!-- Create / Edit Experiment -->
+        <div class="card">
+            <h3 class="section-title">Create / Edit Experiment</h3>
+            <form id="expForm" class="form-grid">
+                <input type="hidden" id="expId" />
+                <input id="expName" type="text" placeholder="Experiment name" required />
+                <input id="expTags" type="text" placeholder="tags (comma-separated)" />
+                <textarea id="expPurpose" placeholder="purpose (optional)"></textarea>
+                <textarea id="expNotes" placeholder="notes (optional)"></textarea>
+                <div class="flex">
+                    <button type="submit" class="btn" id="btnSave">Create</button>
+                    <button type="button" class="btn secondary" id="btnReset">Reset</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Experiments table -->
+        <div class="card">
+            <div class="flex">
+                <h3 class="section-title">Experiments</h3>
+                <span id="countBadge" class="right hint">—</span>
+            </div>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Experiment Name</th>
+                    <th>Purpose</th>
+                    <th>Tags</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody id="expTbody"><tr><td colspan="5" class="empty">프로젝트를 선택하세요.</td></tr></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    // ===== Config =====
+    const API_BASE = localStorage.getItem('apiBase') || 'http://localhost:8080/api';
+    function authHeader(){ const b = localStorage.getItem('basicAuth'); return b ? { 'Authorization': 'Basic '+b } : {}; }
+    function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+    function getParam(name){ return new URL(location.href).searchParams.get(name); }
+
+    // ===== API helpers =====
+    async function apiGet(url){ const r=await fetch(url,{headers:{...authHeader()}}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
+    async function apiJson(url, method, body){
+      const r = await fetch(url, { method, headers: { 'Content-Type':'application/json', ...authHeader() }, body: body? JSON.stringify(body): undefined });
+      const text = await r.text(); let j=null; try{ j = text? JSON.parse(text): null; }catch{}
+      if(!r.ok){ const msg=(j?.error||j?.message||text||('HTTP '+r.status)); throw new Error(msg); }
+      return j ?? {};
+    }
+
+    // ===== Domain API =====
+    async function listProjects(){ const j=await apiGet(`${API_BASE}/projects?page=0&size=200&sort=createdAt,DESC`); return j?.data?.content ?? []; }
+    async function listExperiments(projectId){
+      const j = await apiGet(`${API_BASE}/experiments?projectId=${encodeURIComponent(projectId)}&page=0&size=200&sort=createdAt,DESC`);
+      return j?.data?.content ?? [];
+    }
+    async function createExperiment(body){ return apiJson(`${API_BASE}/experiments`, 'POST', body); }
+    async function updateExperiment(id, body){ return apiJson(`${API_BASE}/experiments/${id}`, 'PATCH', body); }
+    async function deleteExperiment(id){ return apiJson(`${API_BASE}/experiments/${id}`, 'DELETE'); }
+
+    // ===== State & Elements =====
+    const $status = document.getElementById('statusText');
+    const $project = document.getElementById('projectSelect');
+    const $open = document.getElementById('btnOpenProject');
+    const $tbody = document.getElementById('expTbody');
+    const $count = document.getElementById('countBadge');
+    const $form = document.getElementById('expForm');
+    const $expId = document.getElementById('expId');
+    const $expName = document.getElementById('expName');
+    const $expTags = document.getElementById('expTags');
+    const $expPurpose = document.getElementById('expPurpose');
+    const $expNotes = document.getElementById('expNotes');
+    const $btnSave = document.getElementById('btnSave');
+    const $btnReset = document.getElementById('btnReset');
+
+    function setStatus(t, ok=true){ $status.textContent=t; $status.style.color = ok? 'var(--muted)' : '#b91c1c'; }
+    function toCsv(arr){ return Array.isArray(arr) ? arr.join(', ') : (arr||''); }
+    function parseTags(csv){ return (csv||'').split(',').map(s=>s.trim()).filter(Boolean); }
+
+    function fillProjectSelect(items, preselect){
+      $project.innerHTML='';
+      if(!items.length){ $project.innerHTML='<option value="">프로젝트가 없습니다</option>'; return; }
+      $project.insertAdjacentHTML('beforeend','<option value="">프로젝트 선택</option>');
+      for(const p of items){
+        const opt = document.createElement('option');
+        opt.value = p.id; opt.textContent = p.projectName || p.name || p.id;
+        if(preselect && preselect===p.id) opt.selected=true;
+        $project.appendChild(opt);
+      }
+    }
+
+    function rowTemplate(x){
+      const created = x.createdAt ? new Date(x.createdAt).toLocaleString() : '-';
+      const tags = Array.isArray(x.tags) ? x.tags.join(', ') : (x.tags||'');
+      return `<tr data-id="${x.id}">
+        <td><strong>${escapeHtml(x.experimentName||x.id)}</strong></td>
+        <td>${escapeHtml(x.purpose||'')}</td>
+        <td>${escapeHtml(tags)}</td>
+        <td>${created}</td>
+        <td class="flex">
+          <button class="btn secondary" data-action="edit">Edit</button>
+          <button class="btn danger" data-action="del">Delete</button>
+        </td>
+      </tr>`;
+    }
+
+    function render(list){
+      if(!list.length){ $tbody.innerHTML='<tr><td colspan="5" class="empty">데이터가 없습니다.</td></tr>'; $count.textContent='0 items'; return; }
+      $tbody.innerHTML = list.map(rowTemplate).join('');
+      $count.textContent = `${list.length} items`;
+    }
+
+    async function refresh(){
+      const id = $project.value;
+      if(!id){ $tbody.innerHTML='<tr><td colspan="5" class="empty">프로젝트를 선택하세요.</td></tr>'; $count.textContent='—'; return; }
+      setStatus('실험 목록 불러오는 중…');
+      try{ const list = await listExperiments(id); render(list); setStatus('완료'); }
+      catch(e){ console.error(e); setStatus('불러오기 실패: '+(e.message||'error'), false); }
+    }
+
+    function enterCreate(){ $expId.value=''; $expName.value=''; $expTags.value=''; $expPurpose.value=''; $expNotes.value=''; $btnSave.textContent='Create'; }
+    function enterEdit(x){
+      $expId.value = x.id; $expName.value = x.experimentName||'';
+      $expTags.value = toCsv(x.tags); $expPurpose.value=x.purpose||''; $expNotes.value=x.notes||'';
+      $btnSave.textContent='Save'; window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    // events
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      setStatus('프로젝트 목록 불러오는 중…');
+      try{
+        const items = await listProjects();
+        const pre = getParam('projectId');
+        fillProjectSelect(items, pre);
+        setStatus('프로젝트 선택 후 목록을 확인하세요.');
+        if(pre){ await refresh(); }
+      }catch(e){ setStatus('프로젝트 목록 실패: '+(e.message||'error'), false); }
+    });
+
+    $open.addEventListener('click', ()=>{
+      const id = $project.value; if(!id) return alert('프로젝트를 먼저 선택하세요.');
+      location.href = `/projects/detail?id=${encodeURIComponent(id)}`;
+    });
+    $project.addEventListener('change', refresh);
+
+    $tbody.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      const tr = btn.closest('tr'); const id = tr?.dataset?.id;
+      if(btn.dataset.action==='del'){
+        if(!confirm('삭제할까요?')) return;
+        try{ await deleteExperiment(id); await refresh(); }catch(err){ alert('삭제 실패: '+(err.message||'error')); }
+        return;
+      }
+      if(btn.dataset.action==='edit'){
+        // 목록에서 해당 row를 찾아 편집 모드로
+        const name = tr.querySelector('td strong')?.textContent || '';
+        const purpose = tr.children[1]?.textContent || '';
+        const tags = tr.children[2]?.textContent || '';
+        enterEdit({ id, experimentName:name, purpose, tags: tags.split(',').map(s=>s.trim()).filter(Boolean), notes:'' });
+      }
+    });
+
+    $form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const projectId = $project.value; if(!projectId){ alert('프로젝트를 선택하세요.'); return; }
+      const body = {
+        experimentName: $expName.value.trim(),
+        purpose: $expPurpose.value.trim() || null,
+        notes: $expNotes.value.trim() || null,
+        projectId,
+        tags: parseTags($expTags.value)
+      };
+      try{
+        if($expId.value){ await updateExperiment($expId.value, body); }
+        else{ await createExperiment(body); }
+        enterCreate(); await refresh();
+      }catch(err){ alert('저장 실패: '+(err.message||'error')); }
+    });
+
+    $btnReset.addEventListener('click', enterCreate);
+</script>
+</body>
+</html>

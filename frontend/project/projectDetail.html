@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Detail · AI Experiment Tracker</title>
+    <style>
+        :root { --bg:#f6f7fb; --panel:#fff; --ink:#111827; --muted:#6b7280; --brand:#0f2b5b; --brand-weak:#183a78; --ring:#dbe3ff; --radius:16px; --shadow:0 10px 18px rgba(18,28,45,.08) }
+        *{ box-sizing:border-box } html,body{ height:100% }
+        body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Helvetica, Arial; color:var(--ink); background:var(--bg) }
+        .app-header{ position:sticky; top:0; z-index:10; width:100%; background:linear-gradient(180deg,var(--brand),var(--brand-weak)); color:#fff; padding:14px 22px; box-shadow:var(--shadow) }
+        .app-header__title{ margin:0; font-size:18px; font-weight:800; text-align:center }
+
+        .layout{ display:grid; grid-template-columns:240px 1fr; gap:18px; padding:18px; max-width:1280px; margin:0 auto }
+        @media (max-width:960px){ .layout{ grid-template-columns:1fr } .sidebar{ order:2 } }
+
+        .sidebar{ background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 16px; height:fit-content }
+        .sidebar h2{ font-size:14px; color:var(--muted); margin:6px 0 12px; letter-spacing:.6px }
+        .nav{ list-style:none; padding:0; margin:0; display:grid; gap:6px }
+        .nav a{ display:block; padding:10px 12px; border-radius:12px; text-decoration:none; color:var(--ink) }
+        .nav a:hover{ background:#f0f4ff }
+        .nav ul { list-style:none; margin:4px 0 0 16px; padding:0; border-left:1px solid #e0e4f2; }
+        .nav ul li a { font-size:13px; color:#444; }
+
+        .main{ display:grid; gap:16px }
+        .card{ background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; border:1px solid #eef1f7 }
+        .section-title{ margin:0 0 6px; font-weight:800; font-size:14px; color:#0f172a }
+        .hint{ color:var(--muted); font-size:12px }
+
+        .breadcrumbs{ font-size:12px; color:#e5e7eb }
+        .breadcrumbs a{ color:#fff; text-decoration:none }
+        .breadcrumbs a:hover{ text-decoration:underline }
+
+        .grid-2{ display:grid; grid-template-columns:1.2fr .8fr; gap:16px }
+        @media (max-width:900px){ .grid-2{ grid-template-columns:1fr } }
+
+        .title-row{ display:flex; gap:10px; align-items:center }
+        .title-row h3{ margin:0; font-size:18px }
+        .tag{ font-size:11px; color:#0f2b5b; background:#e6edff; border:1px solid #d8e2ff; padding:2px 8px; border-radius:999px }
+
+        .kv{ display:grid; grid-template-columns:120px 1fr; gap:6px 12px; font-size:14px }
+        .kv .k{ color:var(--muted) }
+
+        .btn{ padding:10px 12px; border-radius:12px; border:1px solid #dee3ef; background:#111827; color:#fff; cursor:pointer; font-weight:700 }
+        .btn.secondary{ background:#334155 }
+        .btn.ghost{ background:#fff; color:#111827 }
+        .btn.danger{ background:#b91c1c }
+
+        .actions{ display:flex; gap:8px; flex-wrap:wrap }
+
+        .table{ width:100%; border-collapse:collapse }
+        .table th,.table td{ padding:10px 12px; border-bottom:1px solid #f0f2f7; text-align:left; vertical-align:top }
+        .table th{ font-size:12px; color:var(--muted); font-weight:800 }
+        .empty{ padding:18px; color:var(--muted); text-align:center }
+
+        .right{ margin-left:auto }
+    </style>
+</head>
+<body>
+<header class="app-header">
+    <h1 class="app-header__title">Project Detail</h1>
+</header>
+
+<main class="layout">
+    <aside class="sidebar">
+        <h2>MENU</h2>
+        <nav>
+            <ul class="nav">
+                <li><a href="/index">Home</a></li>
+                <li>
+                    <a href="/projects" class="is-active">Projects</a>
+                    <ul>
+                        <li><a href="/experiments">Experiments</a></li>
+                        <li><a href="/runs">Runs</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <section class="main">
+        <div class="grid-2">
+            <!-- Left: Project overview -->
+            <div class="card">
+                <div class="title-row">
+                    <h3 id="projTitle">프로젝트</h3>
+                    <span class="tag" id="projIdTag">—</span>
+                    <span class="right hint" id="statusText">불러오는 중…</span>
+                </div>
+                <p id="projDesc" class="hint" style="margin-top:6px">—</p>
+                <div class="kv" style="margin-top:10px">
+                    <div class="k">Created</div><div id="projCreated">—</div>
+                    <div class="k">Updated</div><div id="projUpdated">—</div>
+                </div>
+                <div class="actions" style="margin-top:14px">
+                    <button class="btn" id="btnNewExp">새 실험 만들기</button>
+                    <button class="btn secondary" id="btnEdit">프로젝트 수정</button>
+                    <button class="btn danger" id="btnDelete">프로젝트 삭제</button>
+                </div>
+            </div>
+
+            <!-- Right: Quick stats (placeholder, can be API-powered later) -->
+            <div class="card">
+                <h3 class="section-title">Quick Stats</h3>
+                <div class="kv" style="margin-top:6px">
+                    <div class="k">Experiments</div><div id="statExp">—</div>
+                    <div class="k">Latest Accuracy</div><div id="statAcc">—</div>
+                    <div class="k">Last Run</div><div id="statRun">—</div>
+                </div>
+                <p class="hint" style="margin-top:10px">* 추후 Experiment/Runs API 연결 시 자동으로 채워집니다.</p>
+            </div>
+        </div>
+
+        <!-- Experiments (recent) -->
+        <div class="card">
+            <div style="display:flex; align-items:center; gap:8px">
+                <h3 class="section-title">Experiments</h3>
+                <span id="expCount" class="hint">—</span>
+                <div class="right actions">
+                    <button class="btn ghost" id="btnViewAll">전체 보기</button>
+                </div>
+            </div>
+            <table class="table" aria-label="실험 목록">
+                <thead><tr>
+                    <th>Experiment Name</th>
+                    <th>Purpose</th>
+                    <th>Tags</th>
+                    <th>Created At</th>
+                </tr></thead>
+                <tbody id="expTbody">
+                <tr><td colspan="4" class="empty">로딩 중…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    // ===== Config =====
+    const API_BASE = localStorage.getItem('apiBase') || 'http://localhost:8080/api';
+    function authHeader(){ const b = localStorage.getItem('basicAuth'); return b ? { 'Authorization': 'Basic '+b } : {}; }
+
+    // ===== Utils =====
+    function getParam(name){ return new URL(location.href).searchParams.get(name); }
+    function setStatus(t, ok=true){
+      const el = document.getElementById('statusText');
+      el.textContent = t; el.style.color = ok ? 'var(--muted)' : '#b91c1c';
+    }
+    function escapeHtml(s){
+      return (s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));  // ✅ 괄호/매핑 수정
+    }
+
+    // ===== API helpers =====
+    async function apiGet(url){ const r = await fetch(url, { headers: { ...authHeader() }}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
+    async function apiJson(url, method, body){
+      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json', ...authHeader() }, body: body? JSON.stringify(body): undefined });
+      const text = await r.text(); let j; try{ j = text? JSON.parse(text): {}; } catch{ j=null; }
+      if(!r.ok){ const msg = (j && (j.error?.message || j.error || j.message)) || text || ('HTTP '+r.status); throw new Error(msg); }
+      return j ?? {};
+    }
+    async function apiGet(url){
+      const r = await fetch(url, { headers: { ...authHeader() } });
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.json();
+    }
+
+
+    // ===== Domain API =====
+    async function getProject(id){ const j = await apiGet(`${API_BASE}/projects/${id}`); return j?.data || j; }
+    async function deleteProject(id){ return apiJson(`${API_BASE}/projects/${id}`, 'DELETE'); }
+
+    // Experiments: 1) try /api/experiments?projectId=  2) fallback /api/projects/{id}/experiments
+    async function listExperiments(projectId, page=0, size=5){
+      try{
+        const j = await apiGet(`${API_BASE}/experiments?projectId=${encodeURIComponent(projectId)}&page=${page}&size=${size}&sort=createdAt,DESC`);
+        return j?.data?.content ?? j?.data ?? j?.content ?? [];
+      }catch(e){
+        try{
+          const j2 = await apiGet(`${API_BASE}/projects/${projectId}/experiments?page=${page}&size=${size}&sort=createdAt,DESC`);
+          return j2?.data?.content ?? j2?.data ?? j2?.content ?? [];
+        }catch(e2){ return { __error: e2.message } }
+      }
+    }
+
+    // ===== State & Elements =====
+    const projectId = getParam('id');
+    const $title = document.getElementById('projTitle');
+    const $idTag = document.getElementById('projIdTag');
+    const $desc = document.getElementById('projDesc');
+    const $created = document.getElementById('projCreated');
+    const $updated = document.getElementById('projUpdated');
+    const $expTbody = document.getElementById('expTbody');
+    const $expCount = document.getElementById('expCount');
+
+    // ===== Renderers =====
+    function fillProject(p){
+      $title.textContent = p.projectName || p.name || '(no name)';
+      $idTag.textContent = p.id || '—';
+      $desc.textContent = p.description || '—';
+      $created.textContent = p.createdAt ? new Date(p.createdAt).toLocaleString() : '—';
+      $updated.textContent = p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '—';
+    }
+
+    function expRow(x){
+      const created = x.createdAt ? new Date(x.createdAt).toLocaleString() : '-';
+      const name = escapeHtml(x.experimentName || x.name || x.id || '(experiment)');
+      const tags = Array.isArray(x.tags) ? x.tags.join(', ') : (x.tags||'');
+      const purpose = escapeHtml(x.purpose || '');
+      return `<tr>
+        <td><strong>${name}</strong></td>
+        <td>${purpose}</td>
+        <td>${escapeHtml(tags)}</td>
+        <td>${created}</td>
+      </tr>`;
+    }
+
+    function fillExperiments(items){
+      if(items?.__error){ $expTbody.innerHTML = `<tr><td colspan="4" class="empty">실험 API 연결 전: ${escapeHtml(items.__error)}</td></tr>`; $expCount.textContent='0 items'; return; }
+      if(!items || !items.length){ $expTbody.innerHTML = '<tr><td colspan="4" class="empty">실험이 없습니다.</td></tr>'; $expCount.textContent='0 items'; return; }
+      $expTbody.innerHTML = items.map(expRow).join('');
+      $expCount.textContent = `${items.length} items`;
+    }
+
+    // ===== Actions =====
+    document.getElementById('btnEdit').addEventListener('click', ()=>{
+      // projects.html로 이동하며 editId 전달 → 거기서 해당 항목 편집 모드로 열 수 있게
+      location.href = `/projects?editId=${encodeURIComponent(projectId)}`;
+    });
+    document.getElementById('btnDelete').addEventListener('click', async()=>{
+      if(!confirm('정말 이 프로젝트를 삭제할까요?\n이 작업은 되돌릴 수 없습니다.')) return;
+      try{ await deleteProject(projectId); alert('삭제 완료'); location.href='/projects'; }
+      catch(e){ alert('삭제 실패: '+(e.message||'unknown')); }
+    });
+    document.getElementById('btnNewExp').addEventListener('click', ()=>{
+      // 추후 experiments.html이 생기면 거기로 라우팅. 임시로 projects.html로 안내.
+      location.href = `/experiments?projectId=${encodeURIComponent(projectId)}`;
+    });
+    document.getElementById('btnViewAll').addEventListener('click', ()=>{
+      // 추후 experiments.html 구현 시 교체 예정
+      location.href = `/experiments?projectId=${encodeURIComponent(projectId)}`;
+    });
+
+    // ===== Boot =====
+    (async function init(){
+      if(!projectId){ alert('잘못된 접근: project id가 없습니다.'); location.href='projects.html'; return; }
+      try{
+        setStatus('프로젝트를 불러오는 중…');
+        const p = await getProject(projectId);
+        fillProject(p);
+        setStatus('완료');
+      }catch(e){ setStatus(e.message||'불러오기 실패', false); }
+
+      const exps = await listExperiments(projectId, 0, 5);
+      fillExperiments(exps);
+    })();
+</script>
+</body>
+</html>

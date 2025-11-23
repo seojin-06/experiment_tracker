@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Artifacts · AI Experiment Tracker</title>
+  <style>
+    :root { --bg:#f6f7fb; --panel:#fff; --ink:#111827; --muted:#6b7280; --brand:#0f2b5b; --brand-weak:#183a78; --radius:16px; --shadow:0 10px 18px rgba(18,28,45,.08) }
+    *{ box-sizing:border-box }
+    body{ margin:0; font-family:ui-sans-serif,system-ui,-apple-system,"Noto Sans KR"; color:var(--ink); background:var(--bg) }
+    header{ background:linear-gradient(180deg,#0f2b5b,#183a78); color:#fff; padding:14px 20px; font-weight:800; text-align:center }
+
+    .layout{ max-width:1280px; margin:0 auto; padding:18px; display:grid; gap:18px; grid-template-columns:240px 1fr; }
+    @media (max-width:980px){ .layout{ grid-template-columns:1fr } .sidebar{ order:2 } }
+
+    .main { display: grid; gap: 16px; }
+
+    .sidebar{ background:var(--panel); border-radius:16px; box-shadow:var(--shadow); padding:16px; border:1px solid #eef1f7; height:fit-content; }
+    .sidebar h2{ font-size:12px; color:var(--muted); margin:0 0 10px; letter-spacing:.6px }
+    .nav{ list-style:none; padding:0; margin:0; display:grid; gap:6px }
+    .nav a{ display:block; padding:10px 12px; border-radius:12px; text-decoration:none; color:var(--ink) }
+    .nav a:hover{ background:#f0f4ff }
+    .nav ul { list-style:none; margin:4px 0 0 16px; padding:0; border-left:1px solid #e0e4f2; }
+    .nav ul li a { font-size:13px; color:#444; }
+
+    .card{ background:var(--panel); border-radius:16px; box-shadow:var(--shadow); padding:16px; border:1px solid #eef1f7 }
+    label{ font-size:12px; color:var(--muted) }
+    input,select,button{ padding:10px 12px; border:1px solid #dee3ef; border-radius:12px; font:inherit; background:#fff }
+    select,input{ width:100% }
+    .row{ display:grid; gap:10px; grid-template-columns: 1fr 1fr 160px; }
+    @media (max-width:720px){ .row{ grid-template-columns:1fr } }
+    .hint{ color:var(--muted); font-size:12px; margin:8px 0 0 }
+
+    table{ width:100%; border-collapse:collapse }
+    th,td{ padding:8px 10px; border-bottom:1px solid #eef1f7; text-align:left; vertical-align:top }
+    th{ font-size:12px; color:var(--muted) }
+    .flex{ display:flex; gap:8px; align-items:center }
+    .right{ margin-left:auto }
+    .empty{ color:var(--muted); text-align:center }
+    .btn{ background:#111827; color:#fff; font-weight:700; border:1px solid #111827; border-radius:12px; padding:10px 12px; cursor:pointer; white-space:nowrap; text-decoration:none; display:inline-block }
+    .btn.secondary{ background:#fff; color:#111827; border:1px solid #dee3ef; }
+    .btn.danger{ background:#b91c1c; color:#fff; border-color:#b91c1c; }
+  </style>
+</head>
+<body>
+<header>Artifacts</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <h2>MENU</h2>
+    <nav>
+      <ul class="nav">
+        <li><a href="/index">Home</a></li>
+        <li>
+          <a href="/projects">Projects</a>
+          <ul>
+            <li><a href="/experiments">Experiments</a></li>
+            <li><a href="/runs" class="is-active">Runs</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+  </aside>
+
+  <section class="main">
+    <section class="card">
+      <div class="flex">
+        <h3 style="margin:0">Upload Artifact</h3>
+        <a id="back" class="btn secondary right" href="/runs">← Back to Runs</a>
+      </div>
+      <p id="ctx" class="hint"></p>
+      <div class="row" style="margin-top:8px">
+        <select id="type">
+          <option value="MODEL">MODEL</option>
+          <option value="CHECKPOINT">CHECKPOINT</option>
+          <option value="LOG">LOG</option>
+          <option value="IMAGE">IMAGE</option>
+          <option value="OTHER" selected>OTHER</option>
+        </select>
+        <input id="file" type="file" />
+        <button id="btnUpload" class="btn">Upload</button>
+      </div>
+      <p id="hint" class="hint">Runs 페이지에서 ‘Artifacts’ 버튼으로 들어오면 runId가 자동으로 채워져요.</p>
+    </section>
+
+    <section class="card">
+      <div class="flex">
+        <h3 style="margin:0">Artifacts</h3>
+        <span id="count" class="right" style="color:#6b7280; font-size:12px">—</span>
+      </div>
+      <table>
+        <thead><tr><th>type</th><th>filename</th><th>size</th><th>uploadedAt</th><th>actions</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="5" class="empty">데이터 없음</td></tr></tbody>
+      </table>
+    </section>
+  </section>
+</main>
+
+<script>
+  const API = localStorage.getItem('apiBase') || 'http://localhost:8080/api';
+  const auth = ()=> { const b=localStorage.getItem('basicAuth'); return b? {Authorization:'Basic '+b}:{ } };
+  const qs = s => document.querySelector(s);
+
+  const sp = new URLSearchParams(location.search);
+  const runId = sp.get('runId');
+  const projectIdQ = sp.get('projectId');
+  const experimentIdQ = sp.get('experimentId');
+
+
+  // 컨텍스트/Back 링크
+  (function initCtxBack(){
+    const ctx = [];
+    ctx.push(`runId=${runId || '(none)'}`);
+    if(projectIdQ) ctx.push(`projectId=${projectIdQ}`);
+    if(experimentIdQ) ctx.push(`experimentId=${experimentIdQ}`);
+    qs('#ctx').textContent = ctx.join('  •  ');
+
+    const pid = projectIdQ || localStorage.getItem('runs.selectedProjectId') || '';
+    const eid = experimentIdQ || localStorage.getItem('runs.selectedExperimentId') || '';
+    const back = new URL('/runs', location.origin);
+    if (pid) back.searchParams.set('projectId', pid);
+    if (eid) back.searchParams.set('experimentId', eid);
+    qs('#back').setAttribute('href', back.toString());
+
+    if (pid) localStorage.setItem('runs.selectedProjectId', pid);
+    if (eid) localStorage.setItem('runs.selectedExperimentId', eid);
+  })();
+
+  async function jget(url){ const r=await fetch(url,{headers:{...auth()}}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
+  async function jdel(url){ const r=await fetch(url,{method:'DELETE', headers:{...auth()}}); if(!r.ok) throw new Error('HTTP '+r.status); }
+  async function uploadArtifact(runId, type, file){
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('type', type);
+    const r = await fetch(`${API}/runs/${encodeURIComponent(runId)}/artifacts`, {
+      method:'POST', headers:{...auth()}, body: fd
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json(); // ApiResponse<ArtifactResponse>
+  }
+  async function listArtifacts(runId){
+    const q = new URLSearchParams({ page:0, size:100, sort:'uploadedAt,DESC' });
+    const j = await jget(`${API}/runs/${encodeURIComponent(runId)}/artifacts?${q.toString()}`);
+    return j?.data?.content ?? [];
+  }
+
+  function humanSize(n){
+    if(!n && n!==0) return '-';
+    const u=['B','KB','MB','GB','TB']; let i=0; let v=Number(n);
+    while(v>=1024 && i<u.length-1){ v/=1024; i++; }
+    return `${v.toFixed( (i===0)?0:1 )} ${u[i]}`;
+  }
+  function fileNameFromUri(uri){
+    if(!uri) return '';
+    const p = uri.replace(/\\/g,'/');
+    const i = p.lastIndexOf('/');
+    return i>=0 ? p.slice(i+1) : p;
+  }
+
+  function render(rows){
+    const $ = qs('#tbody');
+    if(!rows.length){ $.innerHTML = '<tr><td colspan="5" class="empty">데이터 없음</td></tr>'; qs('#count').textContent='0 items'; return; }
+    $.innerHTML = rows.map(a=>`
+      <tr data-id="${a.id}">
+        <td><strong>${a.type}</strong></td>
+        <td>${fileNameFromUri(a.uri)}</td>
+        <td>${humanSize(a.sizeBytes)}</td>
+        <td>${a.uploadedAt ?? ''}</td>
+        <td class="flex">
+          <a class="btn secondary" href="${API}/artifacts/${a.id}/download" target="_blank">Download</a>
+          <button class="btn danger" data-action="del">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+    qs('#count').textContent = `${rows.length} items`;
+  }
+
+  qs('#btnUpload').addEventListener('click', async ()=>{
+    const f = qs('#file').files?.[0];
+    if(!f) return alert('파일을 선택하세요.');
+    try{
+      qs('#hint').textContent = '업로드 중...';
+      await uploadArtifact(runId, qs('#type').value, f);
+      const rows = await listArtifacts(runId);
+      render(rows);
+      qs('#hint').textContent = '완료';
+      qs('#file').value = '';
+    }catch(e){
+      qs('#hint').textContent = '업로드 실패: ' + (e.message||'error');
+    }
+  });
+
+  document.addEventListener('click', async (ev)=>{
+    const btn = ev.target.closest('button[data-action="del"]');
+    if(!btn) return;
+    const tr = btn.closest('tr'); const id = tr?.dataset?.id;
+    if(!id) return;
+    if(!confirm('삭제할까요?')) return;
+    try{
+      await jdel(`${API}/artifacts/${id}`);
+      const rows = await listArtifacts(runId);
+      render(rows);
+    }catch(e){ alert('삭제 실패: '+(e.message||'error')); }
+  });
+
+  (async function init(){
+    try{
+      qs('#hint').textContent = '로딩 중...';
+      const rows = await listArtifacts(runId);
+      render(rows);
+      qs('#hint').textContent = '완료';
+    }catch(e){
+      qs('#hint').textContent = '불러오기 실패: ' + (e.message||'error');
+    }
+  })();
+</script>
+</body>
+</html>
