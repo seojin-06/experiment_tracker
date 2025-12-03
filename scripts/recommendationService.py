@@ -177,16 +177,29 @@ def reco(req: Request):
         if acc_ok and loss_ok:
             acc_delta = s["acc_pred"]["delta"]
             loss_delta = s["loss_pred"]["delta"]
-            # loss가 줄어들(음수)고, acc가 거의 증가하지 않거나(<=ε) 하락(<=0)
+            
             if loss_delta < -1e-4 and acc_delta <= 1e-4:
                 score = min(
                     1.0,
                     float(abs(loss_delta)) * 10.0 + float(max(0.0, -acc_delta)) * 10.0
                 )
+                
+                acc_pred = s["acc_pred"]
+                pred_final_acc = float(acc_pred["y_pred"])
+                early_stop_epoch = int(acc_pred["next_step"])
+                
+                print("[EARLY_STOP_HINT params]", {
+                    "runId": s["runId"],
+                    "predFinalAcc": pred_final_acc,
+                    "earlyStopEpoch": early_stop_epoch
+                    })
+                
                 suggestions.append(Suggestion(
                     type="EARLY_STOP_HINT",
                     params={
                         "runId": s["runId"],
+                        "predFinalAcc": pred_final_acc,
+                        "earlyStopEpoch": early_stop_epoch,
                         "hints": [
                             "EarlyStopping(patience=3~5)",
                             "Increase Dropout",
@@ -219,10 +232,6 @@ def reco(req: Request):
     }
 
     reason = "Default grid"
-
-    # =========================
-    # 상황별로 grid 변경
-    # =========================
 
     # ① 성능 정체(mean_delta <= 0) → lr 높이는 방향
     if mean_delta <= 0:

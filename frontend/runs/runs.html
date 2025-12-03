@@ -194,8 +194,6 @@
         <td>${r.elapsedMs ?? ''}</td>
         <td>${(r.notes||'').replace(/</g,'&lt;')}</td>
         <td class="flex">
-          <button class="btn secondary" data-action="start">Start</button>
-          <button class="btn secondary" data-action="finish">Finish</button>
           <button class="btn secondary" data-action="metrics">Metrics</button>
           <button class="btn secondary" data-action="artifacts">Artifacts</button>
           <button class="btn danger" data-action="del">Delete</button>
@@ -316,15 +314,6 @@
        if (eid) q.set('experimentId', eid);
        location.href = `/artifacts?${q.toString()}`;
        return;
-      }
-
-      if(btn.dataset.action==='start'){
-        try{ await updateRun(id, { status:'RUNNING' }); await refresh(); } catch(err){ alert('변경 실패: '+err.message); }
-        return;
-      }
-      if(btn.dataset.action==='finish'){
-        try{ await updateRun(id, { status:'COMPLETED' }); await refresh(); } catch(err){ alert('변경 실패: '+err.message); }
-        return;
       }
     });
 

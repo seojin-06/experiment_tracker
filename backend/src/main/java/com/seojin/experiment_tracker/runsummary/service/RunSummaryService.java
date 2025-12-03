@@ -9,6 +9,7 @@ import com.seojin.experiment_tracker.metric.repository.MetricRepository;
 import com.seojin.experiment_tracker.run.domain.Run;
 import com.seojin.experiment_tracker.run.repository.RunRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.*;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class RunSummaryService {
     private final RunRepository runRepository;
@@ -70,41 +72,68 @@ public class RunSummaryService {
                 .toList();
 
         Integer lastEpoch = null;
-        Map<Integer, Double> valAccByEpoch = new LinkedHashMap<>();
+        Map<Integer, Double> accByEpoch = new LinkedHashMap<>();
 
-        // val/acc만 추출
-        List<Metric> valAcc = all.stream()
-                .filter(m -> "val/acc".equalsIgnoreCase(m.getKey()))
+        List<String> accKeys = List.of(
+                "val/acc", "val.acc", "val_acc", "valAccuracy",
+                "accuracy", "acc", "val_accuracy",
+                "train.acc", "train_acc", "trainAccuracy", "train/acc"
+        );
+
+        String selectedAccKey = null;
+        for (String cand : accKeys) {
+            boolean exists = all.stream().anyMatch(m -> {
+                String k = m.getKey();
+                return k != null && k.equalsIgnoreCase(cand);
+            });
+            if (exists) {
+                selectedAccKey = cand;
+                break;
+            }
+        }
+
+        // 🔹 3-2) 선택된 키로 accuracy 시계열 뽑기
+        String finalSelectedAccKey = selectedAccKey;
+        List<Metric> accSeries = (selectedAccKey == null)
+                ? List.of()
+                : all.stream()
+                .filter(m -> {
+                    String k = m.getKey();
+                    return k != null && k.equalsIgnoreCase(finalSelectedAccKey);
+                })
                 .sorted(Comparator.comparingLong(Metric::getStep))
                 .toList();
 
+        // 🔹 3-3) epoch / acc 매핑
         if (!epochSeries.isEmpty()) {
-            lastEpoch = safeToInt(epochSeries.get(epochSeries.size()-1).getValue());
-            // val/acc에 epoch가 같이 있지 않다면, val/acc의 순서를 epoch로 매핑
-            for (int i=0;i<valAcc.size();i++) {
-                int ep = (i+1);
-                valAccByEpoch.put(ep, valAcc.get(i).getValue());
+            // epoch 메트릭이 있는 경우 → 마지막 epoch는 epochSeries 기준
+            lastEpoch = safeToInt(epochSeries.get(epochSeries.size() - 1).getValue());
+            // accSeries의 순서를 epoch 1,2,3... 으로 매핑 (epoch 값과 1:1이 아니어도 대략적으로)
+            for (int i = 0; i < accSeries.size(); i++) {
+                int ep = (i + 1);
+                accByEpoch.put(ep, accSeries.get(i).getValue());
             }
         } else {
-            // epoch이 없으면 val/acc “개수”로 추정
-            lastEpoch = valAcc.isEmpty() ? null : valAcc.size();
-            for (int i=0;i<valAcc.size();i++) {
-                valAccByEpoch.put(i+1, valAcc.get(i).getValue());
+            // epoch 메트릭이 없으면 acc 개수로 epoch 추정
+            lastEpoch = accSeries.isEmpty() ? null : accSeries.size();
+            for (int i = 0; i < accSeries.size(); i++) {
+                accByEpoch.put(i + 1, accSeries.get(i).getValue());
             }
         }
 
         // 4) bestAccuracy / bestEpoch
         Double bestAcc = null;
         Long bestEpoch = null;
-        for (var e : valAccByEpoch.entrySet()) {
-            if (e.getValue() == null) continue;
-            if (bestAcc == null || e.getValue() > bestAcc) {
-                bestAcc = e.getValue();
+        for (var e : accByEpoch.entrySet()) {
+            Double v = e.getValue();
+            if (v == null) continue;
+            if (bestAcc == null || v > bestAcc) {
+                bestAcc = v;
                 bestEpoch = e.getKey().longValue();
             }
         }
 
-        // 5) predictedFinalAccuracy (최근 3개 선형 외삽)
+        /*// 5) predictedFinalAccuracy (최근 3개 선형 외삽)
         Double predicted = null;
         if (valAcc.size() >= 2) {
             List<Double> ys = valAcc.stream().map(Metric::getValue).filter(Objects::nonNull).toList();
@@ -134,7 +163,7 @@ public class RunSummaryService {
                     early = bestEpoch;
                 }
             }
-        }
+        }*/
 
         // 7) 저장/업서트
         RunSummary s = runSummaryRepository.findByRun_Id(runId)
@@ -144,8 +173,32 @@ public class RunSummaryService {
         s.setBestEpoch(bestEpoch);
         s.setLastEpoch(lastEpoch);
         s.setLastStep((int) lastStep);
-        s.setPredictedFinalAccuracy(predicted);
-        s.setEarlyStopEpoch(early);
+
+        return runSummaryRepository.save(s);
+    }
+
+    @Transactional
+    public RunSummary applyAiPrediction(
+            UUID runId,
+            Double predictedFinalAccuracy,
+            Long earlyStopEpoch
+    ) {
+        Run run = runRepository.findById(runId)
+                .orElseThrow(() -> new NotFoundException("Run not found: " + runId));
+
+        RunSummary s = runSummaryRepository.findByRun_Id(runId)
+                .orElseGet(() -> RunSummary.builder().run(run).build());
+
+        if (predictedFinalAccuracy != null) {
+            s.setPredictedFinalAccuracy(predictedFinalAccuracy);
+        }
+        if (earlyStopEpoch != null) {
+            s.setEarlyStopEpoch(earlyStopEpoch);
+        }
+
+        log.info("[RunSummary] applyAiPrediction runId={}, predictedFinalAccuracy={}, earlyStopEpoch={}",
+                runId, s.getPredictedFinalAccuracy(), s.getEarlyStopEpoch());
+
 
         return runSummaryRepository.save(s);
     }

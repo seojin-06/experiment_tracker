@@ -79,35 +79,22 @@
     </aside>
 
     <section class="main">
-        <div class="grid-2">
-            <!-- Left: Project overview -->
-            <div class="card">
-                <div class="title-row">
-                    <h3 id="projTitle">프로젝트</h3>
-                    <span class="tag" id="projIdTag">—</span>
-                    <span class="right hint" id="statusText">불러오는 중…</span>
-                </div>
-                <p id="projDesc" class="hint" style="margin-top:6px">—</p>
-                <div class="kv" style="margin-top:10px">
-                    <div class="k">Created</div><div id="projCreated">—</div>
-                    <div class="k">Updated</div><div id="projUpdated">—</div>
-                </div>
-                <div class="actions" style="margin-top:14px">
-                    <button class="btn" id="btnNewExp">새 실험 만들기</button>
-                    <button class="btn secondary" id="btnEdit">프로젝트 수정</button>
-                    <button class="btn danger" id="btnDelete">프로젝트 삭제</button>
-                </div>
+        <!-- Left: Project overview -->
+        <div class="card">
+            <div class="title-row">
+                <h3 id="projTitle">프로젝트</h3>
+                <span class="tag" id="projIdTag">—</span>
+                <span class="right hint" id="statusText">불러오는 중…</span>
             </div>
-
-            <!-- Right: Quick stats (placeholder, can be API-powered later) -->
-            <div class="card">
-                <h3 class="section-title">Quick Stats</h3>
-                <div class="kv" style="margin-top:6px">
-                    <div class="k">Experiments</div><div id="statExp">—</div>
-                    <div class="k">Latest Accuracy</div><div id="statAcc">—</div>
-                    <div class="k">Last Run</div><div id="statRun">—</div>
-                </div>
-                <p class="hint" style="margin-top:10px">* 추후 Experiment/Runs API 연결 시 자동으로 채워집니다.</p>
+            <p id="projDesc" class="hint" style="margin-top:6px">—</p>
+            <div class="kv" style="margin-top:10px">
+                <div class="k">Created</div><div id="projCreated">—</div>
+                <div class="k">Updated</div><div id="projUpdated">—</div>
+            </div>
+            <div class="actions" style="margin-top:14px">
+                <button class="btn" id="btnNewExp">새 실험 만들기</button>
+                <button class="btn secondary" id="btnEdit">프로젝트 수정</button>
+                <button class="btn danger" id="btnDelete">프로젝트 삭제</button>
             </div>
         </div>
 

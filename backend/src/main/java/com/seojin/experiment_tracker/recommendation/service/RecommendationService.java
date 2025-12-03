@@ -11,6 +11,7 @@ import com.seojin.experiment_tracker.metric.domain.Metric;
 import com.seojin.experiment_tracker.metric.repository.MetricRepository;
 import com.seojin.experiment_tracker.run.domain.Run;
 import com.seojin.experiment_tracker.run.repository.RunRepository;
+import com.seojin.experiment_tracker.runsummary.service.RunSummaryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +29,7 @@ public class RecommendationService {
     private final MetricRepository metricRepo;
     private final RecommendationRepository recoRepo;
     private final RecommendationClient recoClient;
+    private final RunSummaryService runSummaryService;
 
     @Transactional
     public List<Recommendation> refresh(UUID experimentId) {
@@ -106,6 +108,45 @@ public class RecommendationService {
                         .contextJson(s.context())
                         .build();
                 saved.add(recoRepo.save(entity));
+
+                if ("EARLY_STOP_HINT".equalsIgnoreCase(s.type())) {
+                    Map<String, Object> params = (s.params() != null) ? s.params() : Map.of();
+                    Map<String, Object> explanations = (s.explanations() != null) ? s.explanations() : Map.of();
+
+                    Object runIdRaw = params.get("runId");
+                    if (runIdRaw == null) {
+                        continue;
+                    }
+                    UUID runId = UUID.fromString(runIdRaw.toString());
+
+                    // predFinalAcc
+                    Double predFinalAcc = null;
+                    Object predRaw = params.get("predFinalAcc");
+                    if (predRaw instanceof Number n) {
+                        predFinalAcc = n.doubleValue();
+                    } else if (predRaw != null) {
+                        try {
+                            predFinalAcc = Double.parseDouble(predRaw.toString());
+                        } catch (Exception ignored) {}
+                    }
+
+                    // earlyStopEpoch
+                    Long earlyStopEpoch = null;
+                    Object earlyRaw = params.get("earlyStopEpoch");
+                    if (earlyRaw instanceof Number n) {
+                        earlyStopEpoch = n.longValue();
+                    } else if (earlyRaw != null) {
+                        try {
+                            earlyStopEpoch = Long.parseLong(earlyRaw.toString());
+                        } catch (Exception ignored) {}
+                    }
+
+                    log.info("[AI] EARLY_STOP_HINT for run {}: predFinalAcc={}, earlyStopEpoch={}, reason={}",
+                            runId, predFinalAcc, earlyStopEpoch);
+
+                    // RunSummary에 AI 결과 반영
+                    runSummaryService.applyAiPrediction(runId, predFinalAcc, earlyStopEpoch);
+                }
             }
         }
         return saved;
